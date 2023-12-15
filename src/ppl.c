@@ -41,7 +41,7 @@ uint64_t xpf_find_ppl_bootstrap_dispatch(void)
 	uint64_t cbzPPLDispatch = pf_section_find_next_inst(gXPF.kernelTextSection, ppl_enter, 30, cbzAny, cbzAnyMask);
 	uint64_t ppl_bootstrap_dispatch = 0;
 	arm64_dec_cb_n_z(pf_section_read32(gXPF.kernelTextSection, cbzPPLDispatch), cbzPPLDispatch, NULL, NULL, &ppl_bootstrap_dispatch);
-	
+
 	return ppl_bootstrap_dispatch;
 }
 
@@ -60,13 +60,13 @@ uint64_t xpf_find_ppl_handler_table(void)
 
 	uint64_t adrpTarget = 0;
 	if (arm64_dec_adr_p(adrpInst, adrpAddr, &adrpTarget, NULL, NULL) != 0) {
-		printf("ppl_handler_routine: Failed decoding adrp at 0x%llx (0x%x)\n", adrpAddr, adrpInst);
+		printf("ppl_handler_table: Failed decoding adrp at 0x%llx (0x%x)\n", adrpAddr, adrpInst);
 		return 0;
 	}
 
 	uint16_t addImm = 0;
 	if (arm64_dec_add_imm(addInst, NULL, NULL, &addImm) != 0) {
-		printf("ppl_handler_routine: Failed decoding add at 0x%llx (0x%x)\n", addAddr, addInst);
+		printf("ppl_handler_table: Failed decoding add at 0x%llx (0x%x)\n", addAddr, addInst);
 		return 0;
 	}
 
