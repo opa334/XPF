@@ -8,7 +8,7 @@
 
 #include <time.h>
 #include <sys/mman.h>
-#include "../kpf.h"
+#include "../xpf.h"
 
 
 
@@ -17,12 +17,12 @@ int main(int argc, char *argv[]) {
 
     }
     else {
-        if (kpf_start_with_kernel_path(argv[1]) == 0) {
+        if (xpf_start_with_kernel_path(argv[1]) == 0) {
             printf("Started KPF with %s\n", argv[1]);
             clock_t t = clock();
 
-            printf("ppl_handler_table: 0x%llx\n", kpf_get_field("ppl_handler_table"));
-            printf("sysent: 0x%llx\n", kpf_get_field("sysent"));
+            printf("ppl_handler_table: 0x%llx\n", xpf_resolve_item("ppl_handler_table"));
+            printf("sysent: 0x%llx\n", xpf_resolve_item("sysent"));
 
             t = clock() - t;
             double time_taken = ((double)t)/CLOCKS_PER_SEC;
