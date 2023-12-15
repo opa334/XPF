@@ -51,7 +51,7 @@ uint64_t xpf_find_ppl_handler_table(void)
 
 	uint32_t addAny = 0, addAnyMask = 0;
 	arm64_gen_add_imm(ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &addAny, &addAnyMask);
-	
+
 	uint64_t addAddr = pf_section_find_next_inst(gXPF.kernelTextSection, ppl_bootstrap_dispatch, 30, addAny, addAnyMask);
 	uint64_t adrpAddr = addAddr - 4;
 
@@ -63,7 +63,7 @@ uint64_t xpf_find_ppl_handler_table(void)
 		printf("ppl_handler_routine: Failed decoding adrp at 0x%llx (0x%x)\n", adrpAddr, adrpInst);
 		return 0;
 	}
-	
+
 	uint16_t addImm = 0;
 	if (arm64_dec_add_imm(addInst, NULL, NULL, &addImm) != 0) {
 		printf("ppl_handler_routine: Failed decoding add at 0x%llx (0x%x)\n", addAddr, addInst);

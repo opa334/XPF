@@ -27,8 +27,3 @@ typedef struct s_XPF {
 	XPFItem *firstItem;
 } XPF;
 extern XPF gXPF;
-
-typedef struct s_XPFinder {
-	const char *name;
-	uint64_t (*find)(void);
-} XPFinder;
