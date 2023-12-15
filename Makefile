@@ -4,14 +4,14 @@ CC = clang
 CFLAGS = -Iexternal/include -O2
 LDFLAGS = 
 
-all: libkpf.dylib kpf_test
+all: libxpf.dylib xpf_test
 
-libkpf.dylib: $(wildcard src/*.c external/lib/libchoma.a)
-	$(CC) $(CFLAGS) $(LDFLAGS) -dynamiclib -install_name @executable_path/libkpf.dylib -o $@ $^
+libxpf.dylib: $(wildcard src/*.c external/lib/libchoma.a)
+	$(CC) $(CFLAGS) $(LDFLAGS) -dynamiclib -install_name @executable_path/libxpf.dylib -o $@ $^
 
-kpf_test: $(wildcard src/cli/*.c external/lib/libchoma.a)
-	$(CC) $(CFLAGS) $(LDFLAGS) -L. -lkpf -o $@ $^
+xpf_test: $(wildcard src/cli/*.c external/lib/libchoma.a)
+	$(CC) $(CFLAGS) $(LDFLAGS) -L. -lxpf -o $@ $^
 
 clean:
-	@rm -f libkpf.dylib
-	@rm -f kpf_test
+	@rm -f libxpf.dylib
+	@rm -f xpf_test
