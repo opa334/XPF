@@ -1,16 +1,6 @@
-#include "choma/FAT.h"
-#include <choma/CSBlob.h>
-#include <choma/Host.h>
-#include <choma/BufferedStream.h>
-#include <choma/PatchFinder.h>
-#include <choma/PatchFinder_arm64.h>
-#include <choma/arm64.h>
-
 #include <time.h>
 #include <sys/mman.h>
 #include "../xpf.h"
-
-
 
 int main(int argc, char *argv[]) {
     if (argc == 1) {
@@ -23,10 +13,12 @@ int main(int argc, char *argv[]) {
 
             printf("ppl_handler_table: 0x%llx\n", xpf_resolve_item("ppl_handler_table"));
             printf("sysent: 0x%llx\n", xpf_resolve_item("sysent"));
+            printf("pmap_enter_options_internal: 0x%llx\n", xpf_resolve_item("pmap_enter_options_internal"));
 
             t = clock() - t;
             double time_taken = ((double)t)/CLOCKS_PER_SEC;
             printf("KPF finished in %lf seconds\n", time_taken);
+            xpf_stop();
         }
     }
     return 0;

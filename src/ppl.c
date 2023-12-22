@@ -73,9 +73,16 @@ uint64_t xpf_find_ppl_handler_table(void)
 	return adrpTarget + addImm;
 }
 
+uint64_t xpf_find_ppl_routine(uint32_t idx)
+{
+	uint64_t ppl_handler_table = xpf_resolve_item("ppl_handler_table");
+	return xpf_section_read_ptr(gXPF.kernelDataConstSection, ppl_handler_table + (sizeof(uint64_t) * idx));
+}
+
 void xpf_ppl_init(void)
 {
-	xpf_item_register("ppl_enter", xpf_find_ppl_enter);
-	xpf_item_register("ppl_bootstrap_dispatch", xpf_find_ppl_bootstrap_dispatch);
-	xpf_item_register("ppl_handler_table", xpf_find_ppl_handler_table);
+	xpf_item_register("ppl_enter", xpf_find_ppl_enter, NULL);
+	xpf_item_register("ppl_bootstrap_dispatch", xpf_find_ppl_bootstrap_dispatch, NULL);
+	xpf_item_register("ppl_handler_table", xpf_find_ppl_handler_table, NULL);
+	xpf_item_register("pmap_enter_options_internal", xpf_find_ppl_routine, (void *)(int32_t)10);
 }

@@ -4,14 +4,16 @@
 #include <choma/PatchFinder.h>
 
 int xpf_start_with_kernel_path(const char *kernelPath);
-void xpf_item_register(const char *name, uint64_t (*finderFunc)(void));
+void xpf_item_register(const char *name, void *finder, void *ctx);
 uint64_t xpf_resolve_item(const char *name);
-void kpf_stop(void);
+uint64_t xpf_section_read_ptr(PFSection *section, uint64_t vmaddr);
+void xpf_stop(void);
 
 typedef struct s_XPFItem {
 	struct s_XPFItem *nextItem;
 	const char *name;
-	uint64_t (*finder)(void);
+	uint64_t (*finder)(void *);
+	void *ctx;
 	bool cached;
 	uint64_t cache;
 } XPFItem;
@@ -23,6 +25,7 @@ typedef struct s_XPF {
 
 	PFSection *kernelTextSection;
 	PFSection *kernelStringSection;
+	PFSection *kernelDataConstSection;
 
 	XPFItem *firstItem;
 } XPF;
