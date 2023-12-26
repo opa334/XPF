@@ -17,16 +17,16 @@ typedef struct s_PFSection {
 	bool ownsCache;
 } PFSection;
 
-PFSection *pf_section_init_from_macho(MachO *macho, const char *filesetEntryId, const char *segName, const char *sectName);
-int pf_section_read_reloff(PFSection *section, uint64_t rel, size_t size, void *outBuf);
-uint32_t pf_section_read32_reloff(PFSection *section, uint64_t rel);
-int pf_section_read_at_address(PFSection *section, uint64_t vmaddr, void *outBuf, size_t size);
-uint32_t pf_section_read32(PFSection *section, uint64_t vmaddr);
-int pf_section_set_cached(PFSection *section, bool cached);
-uint64_t pf_section_find_prev_inst(PFSection *section, uint64_t startAddr, uint32_t searchCount, uint32_t inst, uint32_t mask);
-uint64_t pf_section_find_next_inst(PFSection *section, uint64_t startAddr, uint32_t searchCount, uint32_t inst, uint32_t mask);
-uint64_t pf_section_find_function_start(PFSection *section, uint64_t midAddr);
-void pf_section_free(PFSection *section);
+PFSection *pfsec_init_from_macho(MachO *macho, const char *filesetEntryId, const char *segName, const char *sectName);
+int pfsec_read_reloff(PFSection *section, uint64_t rel, size_t size, void *outBuf);
+uint32_t pfsec_read32_reloff(PFSection *section, uint64_t rel);
+int pfsec_read_at_address(PFSection *section, uint64_t vmaddr, void *outBuf, size_t size);
+uint32_t pfsec_read32(PFSection *section, uint64_t vmaddr);
+int pfsec_set_cached(PFSection *section, bool cached);
+uint64_t pfsec_find_prev_inst(PFSection *section, uint64_t startAddr, uint32_t searchCount, uint32_t inst, uint32_t mask);
+uint64_t pfsec_find_next_inst(PFSection *section, uint64_t startAddr, uint32_t searchCount, uint32_t inst, uint32_t mask);
+uint64_t pfsec_find_function_start(PFSection *section, uint64_t midAddr);
+void pfsec_free(PFSection *section);
 
 
 typedef struct s_MetricShared {
@@ -41,14 +41,14 @@ typedef enum {
 	BYTE_PATTERN_ALIGN_64_BIT,
 } BytePatternAlignment;
 
-typedef struct s_PFBytePatternMetric {
+typedef struct s_PFPatternMetric {
 	MetricShared shared;
 
 	void *bytes;
 	void *mask;
 	size_t nbytes;
 	BytePatternAlignment alignment;
-} PFBytePatternMetric;
+} PFPatternMetric;
 
 typedef struct s_PFStringMetric {
 	MetricShared shared;
@@ -69,14 +69,14 @@ typedef struct s_PFXrefMetric {
 	XrefTypeMask typeMask;
 } PFXrefMetric;
 
-PFBytePatternMetric *pf_create_byte_pattern_metric(void *bytes, void *mask, size_t nbytes, BytePatternAlignment alignment);
-void pf_byte_pattern_metric_free(PFBytePatternMetric *metric);
+PFPatternMetric *pfmetric_pattern_init(void *bytes, void *mask, size_t nbytes, BytePatternAlignment alignment);
+void pf_byte_pattern_metric_free(PFPatternMetric *metric);
 
-PFStringMetric *pf_create_string_metric(const char *string);
+PFStringMetric *pfmetric_string_init(const char *string);
 void pf_string_metric_free(PFStringMetric *metric);
 
-PFXrefMetric *pf_create_xref_metric(uint64_t address, XrefTypeMask types);
+PFXrefMetric *pfmetric_xref_init(uint64_t address, XrefTypeMask types);
 void pf_xref_metric_free(PFXrefMetric *metric);
 
-void pf_section_run_metric(PFSection *section, void *metric, void (^matchBlock)(uint64_t vmaddr, bool *stop));
+void pfmetric_run(PFSection *section, void *metric, void (^matchBlock)(uint64_t vmaddr, bool *stop));
 #endif
