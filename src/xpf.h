@@ -3,6 +3,7 @@
 #include <choma/FAT.h>
 #include <choma/Util.h>
 #include <choma/PatchFinder.h>
+#include <choma/PatchFinder_arm64.h>
 #include <choma/arm64.h>
 
 int xpf_start_with_kernel_path(const char *kernelPath);
@@ -32,6 +33,7 @@ typedef struct s_XPF {
 	PFSection *kernelPPLTextSection;
 	PFSection *kernelStringSection;
 	PFSection *kernelDataConstSection;
+	PFSection *kernelOSLogSection;
 
 	XPFItem *firstItem;
 } XPF;

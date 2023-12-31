@@ -61,24 +61,7 @@ uint64_t xpf_find_ppl_handler_table(void)
 	arm64_gen_add_imm(ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &addAny, &addAnyMask);
 
 	uint64_t addAddr = pfsec_find_next_inst(gXPF.kernelTextSection, ppl_bootstrap_dispatch, 30, addAny, addAnyMask);
-	uint64_t adrpAddr = addAddr - 4;
-
-	uint32_t adrpInst = pfsec_read32(gXPF.kernelTextSection, adrpAddr);
-	uint32_t addInst = pfsec_read32(gXPF.kernelTextSection, addAddr);
-
-	uint64_t adrpTarget = 0;
-	if (arm64_dec_adr_p(adrpInst, adrpAddr, &adrpTarget, NULL, NULL) != 0) {
-		printf("ppl_handler_table: Failed decoding adrp at 0x%llx (0x%x)\n", adrpAddr, adrpInst);
-		return 0;
-	}
-
-	uint16_t addImm = 0;
-	if (arm64_dec_add_imm(addInst, NULL, NULL, &addImm) != 0) {
-		printf("ppl_handler_table: Failed decoding add at 0x%llx (0x%x)\n", addAddr, addInst);
-		return 0;
-	}
-
-	return adrpTarget + addImm;
+	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, addAddr);
 }
 
 uint64_t xpf_find_ppl_routine(uint32_t idx)
@@ -101,13 +84,36 @@ uint64_t xpf_find_pmap_image4_trust_caches(void)
 {
 	uint64_t pmap_lookup_in_loaded_trust_caches_internal = xpf_resolve_item("pmap_lookup_in_loaded_trust_caches_internal");
 
-	uint32_t ldrAny = 0, ldrAnyMask = 0;
-	arm64_gen_ldr_lit(ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
-	uint64_t ldrAddr = pfsec_find_next_inst(gXPF.kernelPPLTextSection, pmap_lookup_in_loaded_trust_caches_internal, 20, ldrAny, ldrAnyMask);
+	uint32_t ldrLitAny = 0, ldrLitAnyMask = 0;
+	arm64_gen_ldr_lit(ARM64_REG_ANY, OPT_UINT64_NONE, &ldrLitAny, &ldrLitAnyMask);
+	uint64_t ldrLitAddr = pfsec_find_next_inst(gXPF.kernelPPLTextSection, pmap_lookup_in_loaded_trust_caches_internal, 20, ldrLitAny, ldrLitAnyMask);
+	if (ldrLitAddr) {
+		int64_t ldrTarget = 0;
+		arm64_dec_ldr_lit(pfsec_read32(gXPF.kernelPPLTextSection, ldrLitAddr), NULL, &ldrTarget);
+		return ldrLitAddr + ldrTarget;
+	}
 
-	int64_t ldrTarget = 0;
-	arm64_dec_ldr_lit(pfsec_read32(gXPF.kernelPPLTextSection, ldrAddr), NULL, &ldrTarget);
-	return ldrAddr + ldrTarget;
+	/*uint32_t ldrAny = 0, ldrAnyMask = 0;
+	arm64_gen_ldr_imm(0, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
+	uint64_t ldrAddr = pfsec_find_next_inst(gXPF.kernelPPLTextSection, pmap_lookup_in_loaded_trust_caches_internal, 20, ldrAny, ldrAnyMask);
+	if (ldrAddr) {
+		uint32_t ldrInst = pfsec_read32(gXPF.kernelPPLTextSection, ldrAddr);
+		arm64_register reg;
+		uint64_t ldrImm = 0;
+		arm64_dec_ldr_imm(ldrInst, NULL, &reg, &ldrImm, NULL);
+		uint32_t adrpInst = 0, adrpInstAny = 0;
+		arm64_gen_adr_p(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, reg, &adrpInst, &adrpInstAny);
+		uint64_t adrpAddr = pfsec_find_prev_inst(gXPF.kernelPPLTextSection, ldrAddr, 20, adrpInst, adrpInstAny);
+		if (adrpAddr) {
+			uint32_t adrpInst = pfsec_read32(gXPF.kernelPPLTextSection, adrpAddr);
+			uint64_t adrpTarget = 0;
+			arm64_dec_adr_p(adrpInst, adrpAddr, &adrpTarget, NULL, NULL);
+			return adrpTarget + ldrImm;
+		}
+	}*/
+
+	return 0;
+
 }
 
 void xpf_ppl_init(void)

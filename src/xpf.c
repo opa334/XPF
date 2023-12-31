@@ -37,18 +37,21 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 		gXPF.kernelPPLTextSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__PPLTEXT", "__text");
 		gXPF.kernelStringSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__TEXT", "__cstring");
 		gXPF.kernelDataConstSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__DATA_CONST", "__const");
+		gXPF.kernelOSLogSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__TEXT", "__os_log");
 	}
 	else {
 		gXPF.kernelTextSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__TEXT_EXEC", "__text");
 		gXPF.kernelPPLTextSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__PPLTEXT", "__text");
 		gXPF.kernelStringSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__TEXT", "__cstring");
 		gXPF.kernelDataConstSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__DATA_CONST", "__const");
+		gXPF.kernelOSLogSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__TEXT", "__os_log");
 	}
 
 	pfsec_set_cached(gXPF.kernelTextSection, true);
 	if (gXPF.kernelPPLTextSection) pfsec_set_cached(gXPF.kernelPPLTextSection, true);
 	pfsec_set_cached(gXPF.kernelStringSection, true);
 	pfsec_set_cached(gXPF.kernelDataConstSection, true);
+	pfsec_set_cached(gXPF.kernelOSLogSection, true);
 
 	gXPF.kernelBase = UINT64_MAX;
 	gXPF.kernelEntry = 0;
@@ -154,6 +157,9 @@ void xpf_stop(void)
 	}
 	if (gXPF.kernelTextSection) {
 		pfsec_free(gXPF.kernelTextSection);
+	}
+	if (gXPF.kernelOSLogSection) {
+		pfsec_free(gXPF.kernelOSLogSection);
 	}
 	if (gXPF.kernelContainer) {
 		fat_free(gXPF.kernelContainer);

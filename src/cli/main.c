@@ -32,7 +32,9 @@ int main(int argc, char *argv[]) {
             printf("str_x8_x9_gadget: 0x%llx\n", xpf_resolve_item("str_x8_x9_gadget"));
             printf("str_x0_x19_ldr_x20_gadget: 0x%llx\n", xpf_resolve_item("str_x0_x19_ldr_x20_gadget"));
             printf("pacda_gadget: 0x%llx\n", xpf_resolve_item("pacda_gadget"));
-            
+            printf("vm_page_array_beginning_addr: 0x%llx\n", xpf_resolve_item("vm_page_array_beginning_addr"));
+            printf("vm_page_array_ending_addr: 0x%llx\n", xpf_resolve_item("vm_page_array_ending_addr"));
+            printf("vm_first_phys_ppnum: 0x%llx\n", xpf_resolve_item("vm_first_phys_ppnum"));
 
             printf("ppl_handler_table: 0x%llx\n", xpf_resolve_item("ppl_handler_table"));
             //printf("sysent: 0x%llx\n", xpf_resolve_item("sysent"));
@@ -47,6 +49,8 @@ int main(int argc, char *argv[]) {
             printf("gPhysBase: 0x%llx\n", xpf_resolve_item("gPhysBase"));
             printf("gPhysSize: 0x%llx\n", xpf_resolve_item("gPhysSize"));
             printf("ptov_table: 0x%llx\n", xpf_resolve_item("ptov_table"));
+
+            printf("ITK_SPACE: 0x%llx\n", xpf_resolve_item("ITK_SPACE"));
 
             t = clock() - t;
             double time_taken = ((double)t)/CLOCKS_PER_SEC;

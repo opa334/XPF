@@ -33,18 +33,7 @@ uint64_t xpf_find_arm_vm_init_reference(uint32_t n)
 		toCheck = strAddr + 4;
 	}
 
-	arm64_register addrReg;
-	uint64_t strImm = 0;
-	arm64_dec_str_imm(pfsec_read32(gXPF.kernelTextSection, strAddr), NULL, &addrReg, &strImm, NULL);
-
-	uint32_t adrpTemplate = 0, adrpTemplateMask = 0;
-	arm64_gen_adr_p(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, addrReg, &adrpTemplate, &adrpTemplateMask);
-
-	uint64_t adrpAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, strAddr, 20, adrpTemplate, adrpTemplateMask);
-	uint64_t adrpTarget = 0;
-	arm64_dec_adr_p(pfsec_read32(gXPF.kernelTextSection, adrpAddr), adrpAddr, &adrpTarget, NULL, NULL);
-	
-	return adrpTarget + strImm;
+	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, strAddr);
 }
 
 uint64_t xpf_find_phystokv(void)
@@ -80,12 +69,7 @@ uint64_t xpf_find_ptov_table(void)
 		toCheck = ldrAddr + 4;
 	}
 
-	uint64_t ldrImm = 0;
-	arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, ldrAddr), NULL, NULL, &ldrImm, NULL);
-	uint64_t adrpAddr = ldrAddr - 4;
-	uint64_t adrpTarget = 0;
-	arm64_dec_adr_p(pfsec_read32(gXPF.kernelTextSection, adrpAddr), adrpAddr, &adrpTarget, NULL, NULL);
-	return adrpTarget + ldrImm;
+	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
 }
 
 uint64_t xpf_find_start_first_cpu(void)
@@ -103,17 +87,8 @@ uint64_t xpf_find_cpu_ttep(void)
 	arm64_gen_cb_n_z(OPT_BOOL(false), ARM64_REG_X(21), OPT_UINT64_NONE, &cbzX21Any, &cbzX21AnyMask);
 
 	uint64_t cpu_ttep_pre = pfsec_find_next_inst(gXPF.kernelTextSection, start_first_cpu, 0, cbzX21Any, cbzX21AnyMask);
-
-	uint64_t adrpAddr = cpu_ttep_pre + 4;
 	uint64_t addAddr = cpu_ttep_pre + 8;
-
-	uint64_t adrpTarget = 0;
-	arm64_dec_adr_p(pfsec_read32(gXPF.kernelTextSection, adrpAddr), adrpAddr, &adrpTarget, NULL, NULL);
-
-	uint16_t addImm = 0;
-	arm64_dec_add_imm(addAddr, NULL, NULL, &addImm);
-
-	return adrpTarget + addImm;
+	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, addAddr);
 }
 
 uint64_t xpf_find_kernel_el(void)
@@ -208,15 +183,94 @@ uint64_t xpf_find_allproc(void)
 	arm64_gen_ldr_imm(0, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
 
 	uint64_t ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, shutdownwaitXref, 20, ldrAny, ldrAnyMask);
-	uint64_t adrpAddr = ldrAddr - 4;
+	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
+}
 
-	uint64_t adrpTarget = 0;
-	arm64_dec_adr_p(pfsec_read32(gXPF.kernelTextSection, adrpAddr), adrpAddr, &adrpTarget, NULL, NULL);
+uint64_t xpf_find_task_crashinfo_release_ref(void)
+{
+	uint32_t movzW0_0 = 0, movzW0_0Mask = 0;
+	arm64_gen_mov_imm('z', ARM64_REG_W(0), OPT_UINT64(0), OPT_UINT64(0), &movzW0_0, &movzW0_0Mask);
 
-	uint64_t ldrImm = 0;
-	arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, ldrAddr), NULL, NULL, &ldrImm, NULL);
+	PFStringMetric *corpseReleasedMetric = pfmetric_string_init("Corpse released, count at %d\n");
+	__block uint64_t corpseReleasedStringAddr = 0;
+	pfmetric_run(gXPF.kernelOSLogSection, corpseReleasedMetric, ^(uint64_t vmaddr, bool *stop){
+		corpseReleasedStringAddr = vmaddr;
+		*stop = true;
+	});
 
-	return adrpTarget + ldrImm;
+	PFXrefMetric *corseReleasedXrefMetric = pfmetric_xref_init(corpseReleasedStringAddr, XREF_TYPE_MASK_REFERENCE);
+	__block uint64_t task_crashinfo_release_ref = 0;
+	pfmetric_run(gXPF.kernelTextSection, corseReleasedXrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		if (pfsec_find_next_inst(gXPF.kernelTextSection, vmaddr, 20, movzW0_0, movzW0_0Mask)) {
+			task_crashinfo_release_ref = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
+			*stop = true;
+		}
+	});
+
+	return task_crashinfo_release_ref;
+}
+
+uint64_t xpf_find_task_collect_crash_info(void)
+{
+	uint64_t task_crashinfo_release_ref = xpf_resolve_item("task_crashinfo_release_ref");
+
+	uint32_t movzW1_0x4000 = 0x52880001, movzW1_0x4000Mask = 0xffffffff;
+	__block uint64_t task_collect_crash_info = 0;
+	PFXrefMetric *task_crashinfo_release_refXrefMetric = pfmetric_xref_init(task_crashinfo_release_ref, XREF_TYPE_MASK_CALL);
+	pfmetric_run(gXPF.kernelTextSection, task_crashinfo_release_refXrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		if (pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 50, movzW1_0x4000, movzW1_0x4000Mask)) {
+			task_collect_crash_info = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
+			*stop = true;
+		}
+	});
+
+	return task_collect_crash_info;
+}
+
+uint64_t xpf_find_itk_space(void)
+{
+	uint64_t task_collect_crash_info = xpf_resolve_item("task_collect_crash_info");
+
+	uint32_t movzW2_1 = 0, movzW2_1Mask = 0;
+	arm64_gen_mov_imm('z', ARM64_REG_W(2), OPT_UINT64(1), OPT_UINT64(0), &movzW2_1, &movzW2_1Mask);
+
+	__block uint64_t itk_space = 0;
+	PFXrefMetric *task_collect_crash_infoXrefMetric = pfmetric_xref_init(task_collect_crash_info, XREF_TYPE_MASK_CALL);
+	pfmetric_run(gXPF.kernelTextSection, task_collect_crash_infoXrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		if ((pfsec_read32(gXPF.kernelTextSection, vmaddr - 4) & movzW2_1Mask) == movzW2_1) {
+			uint32_t addAny = 0, addAnyMask = 0;
+			arm64_gen_add_imm(ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &addAny, &addAnyMask);
+			uint64_t addInstAddr = pfsec_find_next_inst(gXPF.kernelTextSection, vmaddr, 0, addAny, addAnyMask);
+			uint32_t addInst = pfsec_read32(gXPF.kernelTextSection, addInstAddr);
+
+			uint16_t addImm = 0;
+			arm64_dec_add_imm(addInst, NULL, NULL, &addImm);
+			itk_space = addImm;
+			*stop = true;
+		}
+	});
+
+	return itk_space;
+}
+
+uint64_t xpf_find_vm_reference(uint32_t idx)
+{
+	uint32_t inst = 0x120a6d28; /*and w8, w9, #0xffc3ffff*/
+	PFPatternMetric *patternMetric = pfmetric_pattern_init(&inst, NULL, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
+	__block uint64_t ref = 0;
+	pfmetric_run(gXPF.kernelTextSection, patternMetric, ^(uint64_t vmaddr, bool *stop) {
+		uint32_t ldrAny = 0, ldrAnyMask = 0;
+		arm64_gen_ldr_imm(0, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
+		uint64_t toCheck = vmaddr;
+		uint64_t ldrAddr = 0;
+		for (int i = 0; i < idx; i++) {
+			ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 20, ldrAny, ldrAnyMask);
+			toCheck = ldrAddr + 4;
+		}
+		
+		ref = pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
+	});
+	return ref;
 }
 
 void xpf_common_init(void)
@@ -236,4 +290,12 @@ void xpf_common_init(void)
 	xpf_item_register("gPhysBase", xpf_find_arm_vm_init_reference, (void*)(uint32_t)2);
 	xpf_item_register("gPhysSize", xpf_find_arm_vm_init_reference, (void*)(uint32_t)5);
 	xpf_item_register("ptov_table", xpf_find_ptov_table, NULL);
+
+	xpf_item_register("vm_page_array_beginning_addr", xpf_find_vm_reference, (void *)(uint32_t)1);
+	xpf_item_register("vm_page_array_ending_addr", xpf_find_vm_reference, (void *)(uint32_t)2);
+	xpf_item_register("vm_first_phys_ppnum", xpf_find_vm_reference, (void *)(uint32_t)3);
+
+	xpf_item_register("task_crashinfo_release_ref", xpf_find_task_crashinfo_release_ref, NULL);
+	xpf_item_register("task_collect_crash_info", xpf_find_task_collect_crash_info, NULL);
+	xpf_item_register("ITK_SPACE", xpf_find_itk_space, NULL);
 }
