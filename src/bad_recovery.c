@@ -22,7 +22,6 @@ uint64_t xpf_find_hw_lck_ticket_reserve_orig_allow_invalid_signed(void)
 	};
 
 	PFPatternMetric *metric = pfmetric_pattern_init(inst, mask, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
-
 	__block uint64_t hw_lck_ticket_reserve_orig_allow_invalid_signed = 0;
 	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop) {
 		// Filter out anything with a wfe instruction before it
@@ -31,6 +30,7 @@ uint64_t xpf_find_hw_lck_ticket_reserve_orig_allow_invalid_signed(void)
 			*stop = true;
 		}
 	});
+	pfmetric_free(metric);
 	return hw_lck_ticket_reserve_orig_allow_invalid_signed;
 }
 
@@ -39,7 +39,7 @@ uint64_t xpf_find_hw_lck_ticket_reserve_orig_allow_invalid(void)
 	uint32_t adrAny = 0, adrAnyMask = 0;
 	arm64_gen_adr_p(OPT_BOOL(false), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_REG_ANY, &adrAny, &adrAnyMask);
 
-	uint64_t hw_lck_ticket_reserve_orig_allow_invalid_signed = xpf_resolve_item("hw_lck_ticket_reserve_orig_allow_invalid_signed");
+	uint64_t hw_lck_ticket_reserve_orig_allow_invalid_signed = xpf_item_resolve("kernelGadget.hw_lck_ticket_reserve_orig_allow_invalid_signed");
 	return pfsec_find_prev_inst(gXPF.kernelTextSection, hw_lck_ticket_reserve_orig_allow_invalid_signed, 40, adrAny, adrAnyMask);
 }
 
@@ -64,6 +64,7 @@ uint64_t xpf_find_br_x22_gadget(void)
 			*stop = true;
 		}
 	});
+	pfmetric_free(pacMetric);
 
 	return brX22Gadget;
 }
@@ -82,12 +83,13 @@ uint64_t xpf_find_exception_return(void)
 		exception_return = vmaddr;
 		*stop = true;
 	});
+	pfmetric_free(metric);
 	return exception_return;
 }
 
 uint64_t xpf_find_exception_return_after_check(void)
 {
-	uint64_t exception_return = xpf_resolve_item("exception_return");
+	uint64_t exception_return = xpf_item_resolve("kernelSymbol.exception_return");
 
 	uint32_t inst[] = (uint32_t[]){
 		0xaa0303fe, // mov x30, x3
@@ -102,12 +104,13 @@ uint64_t xpf_find_exception_return_after_check(void)
 		exception_return_after_check = vmaddr;
 		*stop = true;
 	});
+	pfmetric_free(metric);
 	return exception_return_after_check;
 }
 
 uint64_t xpf_find_exception_return_after_check_no_restore(void)
 {
-	uint64_t exception_return = xpf_resolve_item("exception_return");
+	uint64_t exception_return = xpf_item_resolve("kernelSymbol.exception_return");
 
 	uint32_t inst[] = (uint32_t[]){
 		0xd5184021 // msr elr_el1, x1
@@ -119,6 +122,7 @@ uint64_t xpf_find_exception_return_after_check_no_restore(void)
 		exception_return_after_check_no_restore = vmaddr;
 		*stop = true;
 	});
+	pfmetric_free(metric);
 	return exception_return_after_check_no_restore;
 }
 
@@ -135,6 +139,7 @@ uint64_t xpf_find_ldp_x0_x1_x8_gadget(void)
 		ldp_x0_x1_x8_gadget = vmaddr;
 		*stop = true;
 	});
+	pfmetric_free(metric);
 	return ldp_x0_x1_x8_gadget;
 }
 
@@ -151,6 +156,7 @@ uint64_t xpf_find_str_x8_x9_gadget(void)
 		str_x8_x9_gadget = vmaddr;
 		*stop = true;
 	});
+	pfmetric_free(metric);
 	return str_x8_x9_gadget;
 }
 
@@ -174,6 +180,7 @@ uint64_t xpf_find_str_x0_x19_ldr_x20_gadget(void)
 		str_x0_x19_ldr_x20_gadget = vmaddr;
 		*stop = true;
 	});
+	pfmetric_free(metric);
 	return str_x0_x19_ldr_x20_gadget;
 }
 
@@ -193,19 +200,65 @@ uint64_t xpf_find_pacda_gadget(void)
 		pacda_gadget = vmaddr;
 		*stop = true;
 	});
+	pfmetric_free(metric);
 	return pacda_gadget;
 }
 
-void xpf_pac_bypass_init(void)
+uint64_t xpf_find_ml_sign_thread_state(void)
 {
-	xpf_item_register("hw_lck_ticket_reserve_orig_allow_invalid_signed", xpf_find_hw_lck_ticket_reserve_orig_allow_invalid_signed, NULL);
-	xpf_item_register("hw_lck_ticket_reserve_orig_allow_invalid", xpf_find_hw_lck_ticket_reserve_orig_allow_invalid, NULL);
-	xpf_item_register("br_x22_gadget", xpf_find_br_x22_gadget, NULL);
-	xpf_item_register("exception_return", xpf_find_exception_return, NULL);
-	xpf_item_register("exception_return_after_check", xpf_find_exception_return_after_check, NULL);
-	xpf_item_register("exception_return_after_check_no_restore", xpf_find_exception_return_after_check_no_restore, NULL);
-	xpf_item_register("ldp_x0_x1_x8_gadget", xpf_find_ldp_x0_x1_x8_gadget, NULL);
-	xpf_item_register("str_x8_x9_gadget", xpf_find_str_x8_x9_gadget, NULL);
-	xpf_item_register("str_x0_x19_ldr_x20_gadget", xpf_find_str_x0_x19_ldr_x20_gadget, NULL);
-	xpf_item_register("pacda_gadget", xpf_find_pacda_gadget, NULL);
+	uint32_t inst[] = (uint32_t[]){
+		0x9ac03021, // pacga x1, x1, x0
+		0x9262f842, // and x2, x2, #0xffffffffdfffffff
+		0x9ac13041, // pacga x1, x2, x1
+		0x9ac13061, // pacga x1, x3, x1
+		0x9ac13081, // pacga x1, x4, x1
+		0x9ac130a1, // pacga x1, x5, x1
+		0xf9009401, // str x1, [x0, #0x128]
+		0xd65f03c0  // ret
+	};
+
+	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
+	__block uint64_t ml_sign_thread_state = 0;
+	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop) {
+		ml_sign_thread_state = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(metric);
+	return ml_sign_thread_state;
+}
+
+bool xpf_bad_recovery_supported(void)
+{
+	if (strcmp(gXPF.darwinVersion, "21.0.0") >= 0 && strcmp(gXPF.darwinVersion, "21.5.0") < 0) {
+		// iOS 15.0 - 15.4.1: Supported
+		return true;
+	}
+	else if (
+		(strcmp(gXPF.xnuBuild, "8020.120.43.112.1~1") == 0) ||
+		(strcmp(gXPF.xnuBuild, "8020.120.51.122.2~1") == 0) ||
+		(strcmp(gXPF.xnuBuild, "8020.120.68.132.1~1") == 0)
+	) {
+		// iOS 15.5b1 - 15.5b3: Supported
+		return true;
+	}
+
+	// Anything else: Not supported
+	return false;
+}
+
+void xpf_bad_recovery_init(void)
+{
+	if (gXPF.kernelIsArm64e && xpf_bad_recovery_supported()) {
+		xpf_item_register("kernelSymbol.hw_lck_ticket_reserve_orig_allow_invalid", xpf_find_hw_lck_ticket_reserve_orig_allow_invalid, NULL);
+		xpf_item_register("kernelGadget.hw_lck_ticket_reserve_orig_allow_invalid_signed", xpf_find_hw_lck_ticket_reserve_orig_allow_invalid_signed, NULL);
+		xpf_item_register("kernelGadget.br_x22", xpf_find_br_x22_gadget, NULL);
+		xpf_item_register("kernelSymbol.exception_return", xpf_find_exception_return, NULL);
+		xpf_item_register("kernelGadget.exception_return_after_check", xpf_find_exception_return_after_check, NULL);
+		xpf_item_register("kernelGadget.exception_return_after_check_no_restore", xpf_find_exception_return_after_check_no_restore, NULL);
+		xpf_item_register("kernelGadget.ldp_x0_x1_x8", xpf_find_ldp_x0_x1_x8_gadget, NULL);
+		xpf_item_register("kernelGadget.str_x8_x9", xpf_find_str_x8_x9_gadget, NULL);
+		xpf_item_register("kernelGadget.str_x0_x19_ldr_x20", xpf_find_str_x0_x19_ldr_x20_gadget, NULL);
+		xpf_item_register("kernelGadget.pacda", xpf_find_pacda_gadget, NULL);
+		xpf_item_register("kernelSymbol.ml_sign_thread_state", xpf_find_ml_sign_thread_state, NULL);
+	}
 }

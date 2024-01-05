@@ -1,0 +1,1 @@
+void xpf_bad_recovery_init(void);
