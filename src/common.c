@@ -31,11 +31,80 @@ uint64_t xpf_find_arm_vm_init_reference(uint32_t n)
 	uint64_t toCheck = arm_vm_init;
 	uint64_t strAddr = 0;
 	for (int i = 0; i < n; i++) {
-		strAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 20, strAny, strAnyMask);
+		strAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 0x20, strAny, strAnyMask);
 		toCheck = strAddr + 4;
 	}
 
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, strAddr);
+}
+
+uint64_t xpf_find_pmap_bootstrap(void)
+{
+	__block uint64_t pmap_asid_plru_stringAddr = 0;
+	PFStringMetric *asidPlruMetric = pfmetric_string_init("pmap_asid_plru");
+	pfmetric_run(gXPF.kernelStringSection, asidPlruMetric, ^(uint64_t vmaddr, bool *stop) {
+		pmap_asid_plru_stringAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(asidPlruMetric);
+
+	__block uint64_t pmap_bootstrap = 0;
+	PFXrefMetric *asidPlruXrefMetric = pfmetric_xref_init(pmap_asid_plru_stringAddr, XREF_TYPE_MASK_REFERENCE);
+	pfmetric_run(gXPF.kernelTextSection, asidPlruXrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		pmap_bootstrap = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
+		*stop = true;
+	});
+	pfmetric_free(asidPlruXrefMetric);
+	return pmap_bootstrap;
+}
+
+uint64_t xpf_find_pmap_bootstrap_ldr(uint32_t n)
+{
+	uint64_t pmap_bootstrap = xpf_item_resolve("kernelSymbol.pmap_bootstrap");
+
+	uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
+	arm64_gen_ldr_imm(0, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
+
+	uint64_t toCheck = pmap_bootstrap;
+	uint64_t ldrAddr = 0;
+	for (int i = 0; i < n; i++) {
+		ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 0x20, ldrAnyInst, ldrAnyMask);
+		toCheck = ldrAddr + 4;
+	}
+
+	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
+}
+
+uint64_t xpf_find_pac_mask(void)
+{
+	return pfsec_read64(gXPF.kernelConstSection, xpf_item_resolve("kernelSymbol.pac_mask"));
+}
+
+uint64_t xpf_find_T1SZ_BOOT(void)
+{
+	// for T1SZ_BOOT, count how many bits in the pac_mask are set
+	uint64_t pac_mask = xpf_item_resolve("kernelConstant.pac_mask");
+	uint64_t T1SZ_BOOT = 0;
+	for (uint64_t i = 64; i > 0; i--) {
+		if (pac_mask & (1ULL << (i - 1))) {
+			T1SZ_BOOT++;
+		}
+	}
+	return T1SZ_BOOT;
+}
+
+uint64_t xpf_find_ARM_16K_TT_L1_INDEX_MASK(void)
+{
+	uint64_t T1SZ_BOOT = xpf_item_resolve("kernelConstant.T1SZ_BOOT");
+	switch (T1SZ_BOOT) {
+		case 17:
+		return 0x00007ff000000000ULL;
+		case 25:
+		return 0x0000007000000000ULL;
+		default:
+		printf("ARM_16K_TT_L1_INDEX_MASK: Unexpected T1SZ_BOOT??? (%llu)\n", T1SZ_BOOT);
+	}
+	return 0;
 }
 
 uint64_t xpf_find_phystokv(void)
@@ -350,6 +419,17 @@ void xpf_common_init(void)
 	xpf_item_register("kernelSymbol.gPhysBase", xpf_find_arm_vm_init_reference, (void*)(uint32_t)2);
 	xpf_item_register("kernelSymbol.gPhysSize", xpf_find_arm_vm_init_reference, (void*)(uint32_t)5);
 	xpf_item_register("kernelSymbol.ptov_table", xpf_find_ptov_table, NULL);
+
+	xpf_item_register("kernelSymbol.pmap_bootstrap", xpf_find_pmap_bootstrap, NULL);
+	xpf_item_register("kernelSymbol.pac_mask", xpf_find_pmap_bootstrap_ldr, (void*)(uint32_t)3);
+	xpf_item_register("kernelConstant.pac_mask", xpf_find_pac_mask, NULL);
+	xpf_item_register("kernelConstant.T1SZ_BOOT", xpf_find_T1SZ_BOOT, NULL);
+	xpf_item_register("kernelConstant.ARM_16K_TT_L1_INDEX_MASK", xpf_find_ARM_16K_TT_L1_INDEX_MASK, NULL);
+	
+	
+
+	//xpf_item_register("kernelConstant.T0SZ_BOOT", xpf_find_T0SZ_BOOT, NULL);
+	//xpf_item_register("kernelConstant.T1SZ_BOOT", xpf_find_T1SZ_BOOT, NULL);
 
 	xpf_item_register("kernelSymbol.vm_page_array_beginning_addr", xpf_find_vm_reference, (void *)(uint32_t)1);
 	xpf_item_register("kernelSymbol.vm_page_array_ending_addr", xpf_find_vm_reference, (void *)(uint32_t)2);
