@@ -5,7 +5,7 @@
 uint64_t xpf_find_hw_lck_ticket_reserve_orig_allow_invalid_signed(void)
 {
 	uint32_t strX10X16Any = 0, strX10X16AnyMask = 0;
-	arm64_gen_str_imm(0, ARM64_REG_X(10), ARM64_REG_X(16), OPT_UINT64_NONE, &strX10X16Any, &strX10X16AnyMask);
+	arm64_gen_str_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_X(10), ARM64_REG_X(16), OPT_UINT64_NONE, &strX10X16Any, &strX10X16AnyMask);
 
 	uint32_t movzW0_0 = 0, movzW0_0Mask = 0;
 	arm64_gen_mov_imm('z', ARM64_REG_W(0), OPT_UINT64(0), OPT_UINT64(0), &movzW0_0, &movzW0_0Mask);
@@ -163,7 +163,7 @@ uint64_t xpf_find_str_x8_x9_gadget(void)
 uint64_t xpf_find_str_x0_x19_ldr_x20_gadget(void)
 {
 	uint32_t ldrAnyX20Any = 0, ldrAnyX20AnyMask = 0;
-	arm64_gen_ldr_imm(0, ARM64_REG_ANY, ARM64_REG_X(20), OPT_UINT64_NONE, &ldrAnyX20Any, &ldrAnyX20AnyMask);
+	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_X(20), OPT_UINT64_NONE, &ldrAnyX20Any, &ldrAnyX20AnyMask);
 
 	uint32_t inst[] = (uint32_t[]){
 		0xf9000260,  // str x0, [x19]

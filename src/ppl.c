@@ -107,7 +107,7 @@ uint64_t xpf_find_pmap_image4_trust_caches(void)
 	}
 
 	/*uint32_t ldrAny = 0, ldrAnyMask = 0;
-	arm64_gen_ldr_imm(0, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
+	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
 	uint64_t ldrAddr = pfsec_find_next_inst(gXPF.kernelPPLTextSection, pmap_lookup_in_loaded_trust_caches_internal, 20, ldrAny, ldrAnyMask);
 	if (ldrAddr) {
 		uint32_t ldrInst = pfsec_read32(gXPF.kernelPPLTextSection, ldrAddr);
@@ -184,14 +184,14 @@ uint64_t xpf_find_pmap_pin_kernel_pages_reference(uint32_t idx)
 	uint64_t pmap_pin_kernel_pages = xpf_item_resolve("kernelSymbol.pmap_pin_kernel_pages");
 
 	uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
-	arm64_gen_ldr_imm(0, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
+	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
 
 	__block uint64_t ref = 0;
 	__block uint32_t f = 0;
 	PFPatternMetric *metric = pfmetric_pattern_init(&ldrAnyInst, &ldrAnyMask, sizeof(ldrAnyInst), sizeof(uint32_t));
 	pfmetric_run_in_range(gXPF.kernelTextSection, pmap_pin_kernel_pages, -1, metric, ^(uint64_t vmaddr, bool *stop) {
 		arm64_register destinationReg;
-		arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, vmaddr), &destinationReg, NULL, NULL, NULL);
+		arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, vmaddr), &destinationReg, NULL, NULL, NULL, NULL);
 		// On some kernels there is one additional ldr before the ones we're looking for
 		// As this always loads into x0 and the other ones don't, we can filter it out based on that metric
 		if (ARM64_REG_GET_NUM(destinationReg) != 0) {
@@ -236,7 +236,7 @@ uint64_t xpf_find_pv_head_table(void)
 	uint64_t tte_get_ptd = xpf_item_resolve("kernelSymbol.tte_get_ptd");
 
 	uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
-	arm64_gen_ldr_imm(0, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
+	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
 
 	uint64_t ref1 = pfsec_find_next_inst(gXPF.kernelTextSection, tte_get_ptd, 0, ldrAnyInst, ldrAnyMask);
 	uint64_t ref2 = pfsec_find_next_inst(gXPF.kernelTextSection, ref1+4, 0, ldrAnyInst, ldrAnyMask);

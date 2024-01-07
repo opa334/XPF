@@ -26,7 +26,7 @@ uint64_t xpf_find_arm_vm_init_reference(uint32_t n)
 	uint64_t arm_vm_init = xpf_item_resolve("kernelSymbol.arm_vm_init");
 
 	uint32_t strAny = 0, strAnyMask = 0;
-	arm64_gen_str_imm(0, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &strAny, &strAnyMask);
+	arm64_gen_str_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &strAny, &strAnyMask);
 
 	uint64_t toCheck = arm_vm_init;
 	uint64_t strAddr = 0;
@@ -63,7 +63,7 @@ uint64_t xpf_find_pmap_bootstrap_ldr(uint32_t n)
 	uint64_t pmap_bootstrap = xpf_item_resolve("kernelSymbol.pmap_bootstrap");
 
 	uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
-	arm64_gen_ldr_imm(0, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
+	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
 
 	uint64_t toCheck = pmap_bootstrap;
 	uint64_t ldrAddr = 0;
@@ -130,7 +130,7 @@ uint64_t xpf_find_ptov_table(void)
 	uint64_t phystokv = xpf_item_resolve("kernelSymbol.phystokv");
 
 	uint32_t ldrAny = 0, ldrAnyMask = 0;
-	arm64_gen_ldr_imm(0, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
+	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
 
 	// Second ldr in phytokv references ptov_table
 	uint64_t toCheck = phystokv;
@@ -267,7 +267,7 @@ uint64_t xpf_find_allproc(void)
 	pfmetric_free(shutdownwaitXrefMetric);
 
 	uint32_t ldrAny = 0, ldrAnyMask = 0;
-	arm64_gen_ldr_imm(0, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
+	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
 
 	uint64_t ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, shutdownwaitXref, 20, ldrAny, ldrAnyMask);
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
@@ -360,7 +360,7 @@ uint64_t xpf_find_task_itk_space(void)
 		}
 
 		uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
-		arm64_gen_ldr_imm(0, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
+		arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
 
 		// At this place, the first ldr that doesn't read from SP has the reference we want
 		uint64_t ldrAddr = target2;
@@ -368,7 +368,7 @@ uint64_t xpf_find_task_itk_space(void)
 			ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, ldrAddr+4, 0, ldrAnyInst, ldrAnyMask);
 			arm64_register addrReg;
 			uint64_t imm = 0;
-			arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, ldrAddr), NULL, &addrReg, &imm, NULL);
+			arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, ldrAddr), NULL, &addrReg, &imm, NULL, NULL);
 			if (ARM64_REG_GET_NUM(addrReg) != ARM64_REG_NUM_SP) {
 				itk_space = imm;
 				*stop = true;
@@ -388,7 +388,7 @@ uint64_t xpf_find_vm_reference(uint32_t idx)
 	__block uint64_t ref = 0;
 	pfmetric_run(gXPF.kernelTextSection, patternMetric, ^(uint64_t vmaddr, bool *stop) {
 		uint32_t ldrAny = 0, ldrAnyMask = 0;
-		arm64_gen_ldr_imm(0, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
+		arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
 		uint64_t toCheck = vmaddr;
 		uint64_t ldrAddr = 0;
 		for (int i = 0; i < idx; i++) {
@@ -400,6 +400,42 @@ uint64_t xpf_find_vm_reference(uint32_t idx)
 	});
 	pfmetric_free(patternMetric);
 	return ref;
+}
+
+uint64_t xpf_find_vm_map_pmap(void)
+{
+	PFStringMetric *stringMetric = pfmetric_string_init("userspace has control access to a kernel map %p through task %p @%s:%d");
+	__block uint64_t stringAddr = 0;
+	pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
+		stringAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(stringMetric);
+
+	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
+	__block uint64_t xrefAddr = 0;
+	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		xrefAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(xrefMetric);
+
+	uint32_t inst[2] = { 0 };
+	uint32_t mask[2] = { 0 };
+	arm64_gen_ldr_imm(0, LDR_STR_TYPE_PRE_INDEX, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &inst[0], &mask[0]);
+	arm64_gen_cb_n_z(OPT_BOOL_NONE, ARM64_REG_ANY, OPT_UINT64_NONE, &inst[1], &mask[1]);
+
+	__block uint64_t vm_map_pmap = 0;
+	PFPatternMetric *patternMetric = pfmetric_pattern_init(inst, mask, sizeof(inst), sizeof(uint32_t));
+	pfmetric_run_in_range(gXPF.kernelTextSection, xrefAddr, xrefAddr - (100 * sizeof(uint32_t)), patternMetric, ^(uint64_t vmaddr, bool *stop) {
+		if (arm64_dec_adr_p(pfsec_read32(gXPF.kernelTextSection, vmaddr - 4), vmaddr - 4, NULL, NULL, NULL) != 0) {
+			arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, vmaddr), NULL, NULL, &vm_map_pmap, NULL, NULL);
+			*stop = true;
+		}
+	});
+	pfmetric_free(patternMetric);
+
+	return vm_map_pmap;
 }
 
 void xpf_common_init(void)
@@ -433,4 +469,6 @@ void xpf_common_init(void)
 	xpf_item_register("kernelSymbol.task_crashinfo_release_ref", xpf_find_task_crashinfo_release_ref, NULL);
 	xpf_item_register("kernelSymbol.task_collect_crash_info", xpf_find_task_collect_crash_info, NULL);
 	xpf_item_register("kernelStruct.task.itk_space", xpf_find_task_itk_space, NULL);
+
+	xpf_item_register("kernelStruct.vm_map.pmap", xpf_find_vm_map_pmap, NULL);
 }
