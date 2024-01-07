@@ -13,6 +13,7 @@ libxpf_macos.dylib: $(wildcard src/*.c external/lib/libchoma.a)
 
 libxpf.dylib: $(wildcard src/*.c)
 	$(CC) $(CFLAGS) $(CFLAGS_IOS) $(LDFLAGS) -dynamiclib -L$(CHOMA_DYLIB_PATH) -lchoma -install_name @loader_path/libxpf.dylib -o $@ $^
+	ldid -S $@
 
 xpf_test_macos: $(wildcard src/cli/*.c external/lib/libchoma.a)
 	$(CC) $(CFLAGS) $(CFLAGS_MACOS) $(LDFLAGS) -L. -lxpf_macos -o $@ $^
