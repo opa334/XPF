@@ -100,7 +100,7 @@ uint64_t xpf_find_exception_return_after_check(void)
 
 	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
 	__block uint64_t exception_return_after_check = 0;
-	pfmetric_run_from(gXPF.kernelTextSection, exception_return, metric, ^(uint64_t vmaddr, bool *stop){
+	pfmetric_run_in_range(gXPF.kernelTextSection, exception_return, -1, metric, ^(uint64_t vmaddr, bool *stop){
 		exception_return_after_check = vmaddr;
 		*stop = true;
 	});
@@ -118,7 +118,7 @@ uint64_t xpf_find_exception_return_after_check_no_restore(void)
 
 	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
 	__block uint64_t exception_return_after_check_no_restore = 0;
-	pfmetric_run_from(gXPF.kernelTextSection, exception_return, metric, ^(uint64_t vmaddr, bool *stop){
+	pfmetric_run_in_range(gXPF.kernelTextSection, exception_return, -1, metric, ^(uint64_t vmaddr, bool *stop){
 		exception_return_after_check_no_restore = vmaddr;
 		*stop = true;
 	});

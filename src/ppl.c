@@ -189,7 +189,7 @@ uint64_t xpf_find_pmap_pin_kernel_pages_reference(uint32_t idx)
 	__block uint64_t ref = 0;
 	__block uint32_t f = 0;
 	PFPatternMetric *metric = pfmetric_pattern_init(&ldrAnyInst, &ldrAnyMask, sizeof(ldrAnyInst), sizeof(uint32_t));
-	pfmetric_run_from(gXPF.kernelTextSection, pmap_pin_kernel_pages, metric, ^(uint64_t vmaddr, bool *stop) {
+	pfmetric_run_in_range(gXPF.kernelTextSection, pmap_pin_kernel_pages, -1, metric, ^(uint64_t vmaddr, bool *stop) {
 		arm64_register destinationReg;
 		arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, vmaddr), &destinationReg, NULL, NULL, NULL);
 		// On some kernels there is one additional ldr before the ones we're looking for
