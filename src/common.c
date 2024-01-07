@@ -317,7 +317,7 @@ uint64_t xpf_find_task_collect_crash_info(void)
 	return task_collect_crash_info;
 }
 
-uint64_t xpf_find_itk_space(void)
+uint64_t xpf_find_task_itk_space(void)
 {
 	uint64_t task_collect_crash_info = xpf_item_resolve("kernelSymbol.task_collect_crash_info");
 
@@ -384,7 +384,7 @@ uint64_t xpf_find_itk_space(void)
 uint64_t xpf_find_vm_reference(uint32_t idx)
 {
 	uint32_t inst = 0x120a6d28; /*and w8, w9, #0xffc3ffff*/
-	PFPatternMetric *patternMetric = pfmetric_pattern_init(&inst, NULL, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
+	PFPatternMetric *patternMetric = pfmetric_pattern_init(&inst, NULL, sizeof(inst), sizeof(uint32_t));
 	__block uint64_t ref = 0;
 	pfmetric_run(gXPF.kernelTextSection, patternMetric, ^(uint64_t vmaddr, bool *stop) {
 		uint32_t ldrAny = 0, ldrAnyMask = 0;
@@ -395,7 +395,7 @@ uint64_t xpf_find_vm_reference(uint32_t idx)
 			ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 20, ldrAny, ldrAnyMask);
 			toCheck = ldrAddr + 4;
 		}
-		
+
 		ref = pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
 	});
 	pfmetric_free(patternMetric);
@@ -425,11 +425,6 @@ void xpf_common_init(void)
 	xpf_item_register("kernelConstant.pac_mask", xpf_find_pac_mask, NULL);
 	xpf_item_register("kernelConstant.T1SZ_BOOT", xpf_find_T1SZ_BOOT, NULL);
 	xpf_item_register("kernelConstant.ARM_16K_TT_L1_INDEX_MASK", xpf_find_ARM_16K_TT_L1_INDEX_MASK, NULL);
-	
-	
-
-	//xpf_item_register("kernelConstant.T0SZ_BOOT", xpf_find_T0SZ_BOOT, NULL);
-	//xpf_item_register("kernelConstant.T1SZ_BOOT", xpf_find_T1SZ_BOOT, NULL);
 
 	xpf_item_register("kernelSymbol.vm_page_array_beginning_addr", xpf_find_vm_reference, (void *)(uint32_t)1);
 	xpf_item_register("kernelSymbol.vm_page_array_ending_addr", xpf_find_vm_reference, (void *)(uint32_t)2);
@@ -437,5 +432,5 @@ void xpf_common_init(void)
 
 	xpf_item_register("kernelSymbol.task_crashinfo_release_ref", xpf_find_task_crashinfo_release_ref, NULL);
 	xpf_item_register("kernelSymbol.task_collect_crash_info", xpf_find_task_collect_crash_info, NULL);
-	xpf_item_register("kernelStruct.task.itk_space", xpf_find_itk_space, NULL);
+	xpf_item_register("kernelStruct.task.itk_space", xpf_find_task_itk_space, NULL);
 }

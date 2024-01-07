@@ -21,7 +21,7 @@ uint64_t xpf_find_hw_lck_ticket_reserve_orig_allow_invalid_signed(void)
 		0xffffffff,
 	};
 
-	PFPatternMetric *metric = pfmetric_pattern_init(inst, mask, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
+	PFPatternMetric *metric = pfmetric_pattern_init(inst, mask, sizeof(inst), sizeof(uint32_t));
 	__block uint64_t hw_lck_ticket_reserve_orig_allow_invalid_signed = 0;
 	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop) {
 		// Filter out anything with a wfe instruction before it
@@ -55,7 +55,7 @@ uint64_t xpf_find_br_x22_gadget(void)
 	};
 
 	__block uint64_t brX22Gadget = 0;
-	PFPatternMetric *pacMetric = pfmetric_pattern_init(inst, NULL, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
+	PFPatternMetric *pacMetric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
 	pfmetric_run(gXPF.kernelTextSection, pacMetric, ^(uint64_t signCandidate, bool *stop) {
 		uint32_t brX22 = 0xdac103f6; // pacia x22, sp
 		uint64_t brX22Addr = pfsec_find_prev_inst(gXPF.kernelTextSection, signCandidate, 50, brX22, 0xffffffff);
@@ -77,7 +77,7 @@ uint64_t xpf_find_exception_return(void)
 		0x910002bf  // mov sp, x21
 	};
 
-	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
+	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
 	__block uint64_t exception_return = 0;
 	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop){
 		exception_return = vmaddr;
@@ -98,7 +98,7 @@ uint64_t xpf_find_exception_return_after_check(void)
 		0xaa1803e5  // mov x5, x24
 	};
 
-	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
+	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
 	__block uint64_t exception_return_after_check = 0;
 	pfmetric_run_from(gXPF.kernelTextSection, exception_return, metric, ^(uint64_t vmaddr, bool *stop){
 		exception_return_after_check = vmaddr;
@@ -116,7 +116,7 @@ uint64_t xpf_find_exception_return_after_check_no_restore(void)
 		0xd5184021 // msr elr_el1, x1
 	};
 
-	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
+	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
 	__block uint64_t exception_return_after_check_no_restore = 0;
 	pfmetric_run_from(gXPF.kernelTextSection, exception_return, metric, ^(uint64_t vmaddr, bool *stop){
 		exception_return_after_check_no_restore = vmaddr;
@@ -133,7 +133,7 @@ uint64_t xpf_find_ldp_x0_x1_x8_gadget(void)
 		0xd65f03c0  // ret
 	};
 
-	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
+	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
 	__block uint64_t ldp_x0_x1_x8_gadget = 0;
 	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop) {
 		ldp_x0_x1_x8_gadget = vmaddr;
@@ -150,7 +150,7 @@ uint64_t xpf_find_str_x8_x9_gadget(void)
 		0xd65f03c0  // ret
 	};
 
-	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
+	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
 	__block uint64_t str_x8_x9_gadget = 0;
 	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop) {
 		str_x8_x9_gadget = vmaddr;
@@ -174,7 +174,7 @@ uint64_t xpf_find_str_x0_x19_ldr_x20_gadget(void)
 		ldrAnyX20AnyMask
 	};
 
-	PFPatternMetric *metric = pfmetric_pattern_init(inst, mask, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
+	PFPatternMetric *metric = pfmetric_pattern_init(inst, mask, sizeof(inst), sizeof(uint32_t));
 	__block uint64_t str_x0_x19_ldr_x20_gadget = 0;
 	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop) {
 		str_x0_x19_ldr_x20_gadget = vmaddr;
@@ -194,7 +194,7 @@ uint64_t xpf_find_pacda_gadget(void)
 		0xd65f03c0  // ret
 	};
 
-	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
+	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
 	__block uint64_t pacda_gadget = 0;
 	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop) {
 		pacda_gadget = vmaddr;
@@ -217,7 +217,7 @@ uint64_t xpf_find_ml_sign_thread_state(void)
 		0xd65f03c0  // ret
 	};
 
-	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), BYTE_PATTERN_ALIGN_32_BIT);
+	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
 	__block uint64_t ml_sign_thread_state = 0;
 	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop) {
 		ml_sign_thread_state = vmaddr;

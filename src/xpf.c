@@ -218,7 +218,7 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 	}
 
 	const char *versionSearchString = "Darwin Kernel Version ";
-	PFPatternMetric *versionMetric = pfmetric_pattern_init((void *)versionSearchString, NULL, strlen(versionSearchString), BYTE_PATTERN_ALIGN_8_BIT);
+	PFPatternMetric *versionMetric = pfmetric_pattern_init((void *)versionSearchString, NULL, strlen(versionSearchString), sizeof(uint8_t));
 	pfmetric_run(gXPF.kernelConstSection, versionMetric, ^(uint64_t vmaddr, bool *stop) {
 		int r = pfsec_read_string(gXPF.kernelConstSection, vmaddr, &gXPF.kernelVersionString);
 		*stop = true;
