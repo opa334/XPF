@@ -58,26 +58,26 @@ uint64_t xpf_find_pmap_bootstrap(void)
 	return pmap_bootstrap;
 }
 
-uint64_t xpf_find_pmap_bootstrap_ldr(uint32_t n)
+uint64_t xpf_find_pac_mask_symbol(uint32_t n)
 {
 	uint64_t pmap_bootstrap = xpf_item_resolve("kernelSymbol.pmap_bootstrap");
 
-	uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
-	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
+	uint32_t ldrQ0AnyInst = 0, ldrQ0AnyMask = 0;
+	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_Q(0), ARM64_REG_ANY, OPT_UINT64_NONE, &ldrQ0AnyInst, &ldrQ0AnyMask);
 
-	uint64_t toCheck = pmap_bootstrap;
-	uint64_t ldrAddr = 0;
-	for (int i = 0; i < n; i++) {
-		ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 0x20, ldrAnyInst, ldrAnyMask);
-		toCheck = ldrAddr + 4;
-	}
+	uint64_t ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, pmap_bootstrap, 0x100, ldrQ0AnyInst, ldrQ0AnyMask);
 
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
 }
 
 uint64_t xpf_find_pac_mask(void)
 {
-	return pfsec_read64(gXPF.kernelConstSection, xpf_item_resolve("kernelSymbol.pac_mask"));
+	uint64_t pac_mask = pfsec_read64(gXPF.kernelConstSection, xpf_item_resolve("kernelSymbol.pac_mask"));
+	if (pac_mask != 0xffffff8000000000 && pac_mask != 0xffff800000000000) {
+		xpf_set_error("xpf_find_pac_mask error: Unexpected PAC mask: 0x%llx", pac_mask);
+		return 0;
+	}
+	return pac_mask;
 }
 
 uint64_t xpf_find_T1SZ_BOOT(void)
@@ -336,7 +336,7 @@ uint64_t xpf_find_task_itk_space(void)
 		bool isCbnz = false;
 		uint64_t target1 = 0;
 		if (arm64_dec_cb_n_z(pfsec_read32(gXPF.kernelTextSection, cbz1Addr), cbz1Addr, &isCbnz, NULL, &target1) != 0) {
-			printf("itk_space error: first branch is not cbz\n");
+			xpf_set_error("itk_space error: first branch is not cbz");
 			*stop = true;
 		}
 		if (isCbnz) {
@@ -351,7 +351,7 @@ uint64_t xpf_find_task_itk_space(void)
 
 		uint64_t target2 = 0;
 		if (arm64_dec_cb_n_z(pfsec_read32(gXPF.kernelTextSection, cbz2Addr), cbz2Addr, &isCbnz, NULL, &target2) != 0) {
-			printf("itk_space error: second branch not found\n");
+			xpf_set_error("itk_space error: second branch not found");
 			*stop = true;
 		}
 		if (isCbnz) {
@@ -457,7 +457,7 @@ void xpf_common_init(void)
 	xpf_item_register("kernelSymbol.ptov_table", xpf_find_ptov_table, NULL);
 
 	xpf_item_register("kernelSymbol.pmap_bootstrap", xpf_find_pmap_bootstrap, NULL);
-	xpf_item_register("kernelSymbol.pac_mask", xpf_find_pmap_bootstrap_ldr, (void*)(uint32_t)3);
+	xpf_item_register("kernelSymbol.pac_mask", xpf_find_pac_mask_symbol, NULL);
 	xpf_item_register("kernelConstant.pac_mask", xpf_find_pac_mask, NULL);
 	xpf_item_register("kernelConstant.T1SZ_BOOT", xpf_find_T1SZ_BOOT, NULL);
 	xpf_item_register("kernelConstant.ARM_16K_TT_L1_INDEX_MASK", xpf_find_ARM_16K_TT_L1_INDEX_MASK, NULL);
