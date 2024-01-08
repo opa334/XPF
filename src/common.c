@@ -58,7 +58,7 @@ uint64_t xpf_find_pmap_bootstrap(void)
 	return pmap_bootstrap;
 }
 
-uint64_t xpf_find_pac_mask_symbol(uint32_t n)
+uint64_t xpf_find_pointer_mask_symbol(uint32_t n)
 {
 	uint64_t pmap_bootstrap = xpf_item_resolve("kernelSymbol.pmap_bootstrap");
 
@@ -70,23 +70,23 @@ uint64_t xpf_find_pac_mask_symbol(uint32_t n)
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
 }
 
-uint64_t xpf_find_pac_mask(void)
+uint64_t xpf_find_pointer_mask(void)
 {
-	uint64_t pac_mask = pfsec_read64(gXPF.kernelConstSection, xpf_item_resolve("kernelSymbol.pac_mask"));
-	if (pac_mask != 0xffffff8000000000 && pac_mask != 0xffff800000000000) {
-		xpf_set_error("xpf_find_pac_mask error: Unexpected PAC mask: 0x%llx", pac_mask);
+	uint64_t pointer_mask = pfsec_read64(gXPF.kernelConstSection, xpf_item_resolve("kernelSymbol.pointer_mask"));
+	if (pointer_mask != 0xffffff8000000000 && pointer_mask != 0xffff800000000000) {
+		xpf_set_error("xpf_find_pointer_mask error: Unexpected PAC mask: 0x%llx", pointer_mask);
 		return 0;
 	}
-	return pac_mask;
+	return pointer_mask;
 }
 
 uint64_t xpf_find_T1SZ_BOOT(void)
 {
-	// for T1SZ_BOOT, count how many bits in the pac_mask are set
-	uint64_t pac_mask = xpf_item_resolve("kernelConstant.pac_mask");
+	// for T1SZ_BOOT, count how many bits in the pointer_mask are set
+	uint64_t pointer_mask = xpf_item_resolve("kernelConstant.pointer_mask");
 	uint64_t T1SZ_BOOT = 0;
 	for (uint64_t i = 64; i > 0; i--) {
-		if (pac_mask & (1ULL << (i - 1))) {
+		if (pointer_mask & (1ULL << (i - 1))) {
 			T1SZ_BOOT++;
 		}
 	}
@@ -422,8 +422,10 @@ uint64_t xpf_find_vm_map_pmap(void)
 
 	uint32_t inst[2] = { 0 };
 	uint32_t mask[2] = { 0 };
-	arm64_gen_ldr_imm(0, LDR_STR_TYPE_PRE_INDEX, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &inst[0], &mask[0]);
-	arm64_gen_cb_n_z(OPT_BOOL_NONE, ARM64_REG_ANY, OPT_UINT64_NONE, &inst[1], &mask[1]);
+	arm64_gen_ldr_imm(0, gXPF.kernelIsArm64e ? LDR_STR_TYPE_PRE_INDEX : LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &inst[0], &mask[0]);
+	if (gXPF.kernelIsArm64e) {
+		arm64_gen_cb_n_z(OPT_BOOL_NONE, ARM64_REG_ANY, OPT_UINT64_NONE, &inst[1], &mask[1]);
+	}
 
 	__block uint64_t vm_map_pmap = 0;
 	PFPatternMetric *patternMetric = pfmetric_pattern_init(inst, mask, sizeof(inst), sizeof(uint32_t));
@@ -457,8 +459,8 @@ void xpf_common_init(void)
 	xpf_item_register("kernelSymbol.ptov_table", xpf_find_ptov_table, NULL);
 
 	xpf_item_register("kernelSymbol.pmap_bootstrap", xpf_find_pmap_bootstrap, NULL);
-	xpf_item_register("kernelSymbol.pac_mask", xpf_find_pac_mask_symbol, NULL);
-	xpf_item_register("kernelConstant.pac_mask", xpf_find_pac_mask, NULL);
+	xpf_item_register("kernelSymbol.pointer_mask", xpf_find_pointer_mask_symbol, NULL);
+	xpf_item_register("kernelConstant.pointer_mask", xpf_find_pointer_mask, NULL);
 	xpf_item_register("kernelConstant.T1SZ_BOOT", xpf_find_T1SZ_BOOT, NULL);
 	xpf_item_register("kernelConstant.ARM_16K_TT_L1_INDEX_MASK", xpf_find_ARM_16K_TT_L1_INDEX_MASK, NULL);
 
