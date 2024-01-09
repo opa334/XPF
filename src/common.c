@@ -440,6 +440,98 @@ uint64_t xpf_find_vm_map_pmap(void)
 	return vm_map_pmap;
 }
 
+uint64_t xpf_find_perfmon_dev_open(void)
+{
+	PFStringMetric *perfmonMetric = pfmetric_string_init("perfmon: attempt to open unsupported source: 0x%x @%s:%d");
+	__block uint64_t perfmonString = 0;
+	pfmetric_run(gXPF.kernelStringSection, perfmonMetric, ^(uint64_t vmaddr, bool *stop) {
+		perfmonString = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(perfmonMetric);
+
+	PFXrefMetric *perfmonXrefMetric = pfmetric_xref_init(perfmonString, XREF_TYPE_MASK_REFERENCE);
+	__block uint64_t perfmonXref = 0;
+	pfmetric_run(gXPF.kernelTextSection, perfmonXrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		perfmonXref = vmaddr;
+		*stop = true;
+	});
+
+	pfmetric_free(perfmonXrefMetric);
+	return pfsec_find_function_start(gXPF.kernelTextSection, perfmonXref);
+}
+
+uint64_t xpf_find_perfmon_devices(void)
+{
+	uint64_t perfmon_dev_open = xpf_item_resolve("kernelSymbol.perfmon_dev_open");
+	
+	if (gXPF.kernelIsArm64e && strcmp(gXPF.darwinVersion, "23.0.0") != 0) {
+		uint32_t movW9_0xA0 = 0, movW9_0xA0Mask = 0;
+		arm64_gen_mov_imm('z', ARM64_REG_W(9), OPT_UINT64(0xA0), OPT_UINT64_NONE, &movW9_0xA0, &movW9_0xA0Mask);
+
+		uint64_t movAddr = pfsec_find_next_inst(gXPF.kernelTextSection, perfmon_dev_open, 0, movW9_0xA0, movW9_0xA0Mask);
+		return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, movAddr + 0x8);
+	} else {
+		uint32_t movW10_0x28 = 0, movW10_0x28Mask = 0;
+		arm64_gen_mov_imm('z', ARM64_REG_W(10), OPT_UINT64(0x28), OPT_UINT64_NONE, &movW10_0x28, &movW10_0x28Mask);
+
+		uint64_t movAddr = pfsec_find_next_inst(gXPF.kernelTextSection, perfmon_dev_open, 0, movW10_0x28, movW10_0x28Mask);
+		return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, movAddr - 0x4);
+	}
+}
+
+uint64_t xpf_find_vn_kqfilter(void)
+{
+	PFStringMetric *InvalidKnoteMetric = pfmetric_string_init("Invalid knote filter on a vnode! @%s:%d");
+	__block uint64_t InvalidKnoteString = 0;
+	pfmetric_run(gXPF.kernelStringSection, InvalidKnoteMetric, ^(uint64_t vmaddr, bool *stop) {
+		InvalidKnoteString = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(InvalidKnoteMetric);
+
+	PFXrefMetric *InvalidKnoteXrefMetric = pfmetric_xref_init(InvalidKnoteString, XREF_TYPE_MASK_REFERENCE);
+	__block uint64_t InvalidKnoteXref = 0;
+	pfmetric_run(gXPF.kernelTextSection, InvalidKnoteXrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		InvalidKnoteXref = vmaddr;
+		*stop = true;
+	});
+
+	pfmetric_free(InvalidKnoteXrefMetric);
+	uint64_t ref_start = pfsec_find_function_start(gXPF.kernelTextSection, InvalidKnoteXref);
+
+	return pfsec_find_function_start(gXPF.kernelTextSection, ref_start - 0x4);
+}
+
+uint64_t xpf_find_cdevsw(void)
+{
+	uint64_t vn_kqfilter = xpf_item_resolve("kernelSymbol.vn_kqfilter");
+
+	uint32_t blAny = 0, blAnyMask = 0;
+	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAny, &blAnyMask);
+	uint64_t bl_spec_kqfilterAddr = vn_kqfilter;
+
+	/*
+		iOS 15 arm64/arm64e = 15
+		iOS 16 arm64/arm64e = 6
+		iOS 17 arm64 = 5
+		iOS 17 arm64e = 6
+	*/
+	int skip = (strcmp(gXPF.darwinVersion, "22.0.0") >= 0) ? (gXPF.kernelIsArm64e ? 6 : 5) : 15;
+	for (int i = 0; i < skip; i++) {
+		bl_spec_kqfilterAddr = pfsec_find_next_inst(gXPF.kernelTextSection, bl_spec_kqfilterAddr + 4, 100, blAny, blAnyMask);   
+	}
+
+	uint64_t spec_kqfilter = 0;
+	arm64_dec_b_l(pfsec_read32(gXPF.kernelTextSection, bl_spec_kqfilterAddr), bl_spec_kqfilterAddr, &spec_kqfilter, NULL);
+
+	uint32_t movW10_0x70 = 0, mov10_0x70Mask = 0;
+	arm64_gen_mov_imm('z', ARM64_REG_W(10), OPT_UINT64(0x70), OPT_UINT64_NONE, &movW10_0x70, &mov10_0x70Mask);
+	uint64_t movAddr = pfsec_find_next_inst(gXPF.kernelTextSection, spec_kqfilter, 0, movW10_0x70, mov10_0x70Mask);
+
+	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, movAddr + 0x8);
+}
+
 void xpf_common_init(void)
 {
 	xpf_item_register("kernelSymbol.start_first_cpu", xpf_find_start_first_cpu, NULL);
@@ -473,4 +565,9 @@ void xpf_common_init(void)
 	xpf_item_register("kernelStruct.task.itk_space", xpf_find_task_itk_space, NULL);
 
 	xpf_item_register("kernelStruct.vm_map.pmap", xpf_find_vm_map_pmap, NULL);
+
+	xpf_item_register("kernelSymbol.perfmon_dev_open", xpf_find_perfmon_dev_open, NULL);
+	xpf_item_register("kernelConstant.perfmon_devices", xpf_find_perfmon_devices, NULL);
+	xpf_item_register("kernelSymbol.vn_kqfilter", xpf_find_vn_kqfilter, NULL);
+	xpf_item_register("kernelConstant.cdevsw", xpf_find_cdevsw, NULL);
 }
