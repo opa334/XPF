@@ -26,6 +26,7 @@ int xpf_start_with_kernel_path(const char *kernelPath);
 void xpf_item_register(const char *name, void *finder, void *ctx);
 uint64_t xpf_item_resolve(const char *name);
 uint64_t xpfsec_read_ptr(PFSection *section, uint64_t vmaddr);
+bool xpf_set_is_supported(const char *name);
 int xpf_offset_dictionary_add_set(xpc_object_t xdict, XPFSet *set);
 xpc_object_t xpf_construct_offset_dictionary(const char *sets[]);
 void xpf_set_error(const char *error, ...);

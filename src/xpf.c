@@ -321,6 +321,17 @@ uint64_t xpfsec_read_ptr(PFSection *section, uint64_t vmaddr)
 	return r;
 }
 
+bool xpf_set_is_supported(const char *name)
+{
+	uint32_t setCount = (sizeof(gSets)/sizeof(XPFSet*));
+	for (int j = 0; j < setCount; j++) {
+		if (!strcmp(gSets[j]->name, name)) {
+			if (gSets[j]->supported()) return true;
+		}
+	}
+	return false;
+}
+
 int xpf_offset_dictionary_add_set(xpc_object_t xdict, XPFSet *set)
 {
 	if (!set->supported()) {
