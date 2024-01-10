@@ -93,7 +93,7 @@ XPFSet gTrustcache16Set = {
 
 XPFSet gBadRecoverySet = {
 	.name="badRecovery",
-	.supported=xpf_supported_always,
+	.supported=xpf_bad_recovery_supported,
 	.metrics={
 		"kernelSymbol.hw_lck_ticket_reserve_orig_allow_invalid",
 		"kernelGadget.hw_lck_ticket_reserve_orig_allow_invalid_signed",
@@ -358,9 +358,9 @@ uint64_t xpfsec_read_ptr(PFSection *section, uint64_t vmaddr)
 bool xpf_set_is_supported(const char *name)
 {
 	uint32_t setCount = (sizeof(gSets)/sizeof(XPFSet*));
-	for (int j = 0; j < setCount; j++) {
-		if (!strcmp(gSets[j]->name, name)) {
-			if (gSets[j]->supported()) return true;
+	for (int i = 0; i < setCount; i++) {
+		if (!strcmp(gSets[i]->name, name)) {
+			if (gSets[i]->supported()) return true;
 		}
 	}
 	return false;
