@@ -27,9 +27,9 @@ bool xpf_supported_16up(void)
 }
 
 XPFSet gBaseSet = {
-	"base",
-	xpf_supported_always,
-	{
+	.name="base",
+	.supported=xpf_supported_always,
+	.metrics={
 		"kernelConstant.kernel_el",
 		"kernelSymbol.allproc",
 		"kernelSymbol.kalloc_data_external",
@@ -39,9 +39,9 @@ XPFSet gBaseSet = {
 };
 
 XPFSet gTranslationSet = {
-	"translation",
-	xpf_supported_always,
-	{
+	.name="translation",
+	.supported=xpf_supported_always,
+	.metrics={
 		"kernelSymbol.cpu_ttep",
 		"kernelSymbol.gVirtBase",
 		"kernelSymbol.gPhysBase",
@@ -52,9 +52,9 @@ XPFSet gTranslationSet = {
 };
 
 XPFSet gPhysmapSet = {
-	"physmap",
-	xpf_supported_always,
-	{
+	.name="physmap",
+	.supported=xpf_supported_always,
+	.metrics={
 		"kernelSymbol.vm_page_array_beginning_addr",
 		"kernelSymbol.vm_page_array_ending_addr",
 		"kernelSymbol.vm_first_phys_ppnum",
@@ -63,17 +63,17 @@ XPFSet gPhysmapSet = {
 };
 
 XPFSet gStructSet = {
-	"struct",
-	xpf_supported_always,
-	{
+	.name="struct",
+	.supported=xpf_supported_always,
+	.metrics={
 		"kernelStruct.task.itk_space",
 		NULL
 	}
 };
 
 XPFSet gTrustcache15Set = {
-	"trustcache",
-	xpf_supported_15down,
+	.name="trustcache",
+	.supported=xpf_supported_15down,
 	{
 		"kernelSymbol.pmap_image4_trust_caches",
 		NULL
@@ -81,18 +81,18 @@ XPFSet gTrustcache15Set = {
 };
 
 XPFSet gTrustcache16Set = {
-	"trustcache",
+	.name="trustcache",
 	xpf_supported_16up,
-	{
+	.metrics={
 		"kernelSymbol.ppl_trust_cache_rt",
 		NULL
 	}
 };
 
 XPFSet gBadRecoverySet = {
-	"badRecovery",
-	xpf_supported_always,
-	{
+	.name="badRecovery",
+	.supported=xpf_supported_always,
+	.metrics={
 		"kernelSymbol.hw_lck_ticket_reserve_orig_allow_invalid",
 		"kernelGadget.hw_lck_ticket_reserve_orig_allow_invalid_signed",
 		"kernelGadget.br_x22",
@@ -109,11 +109,22 @@ XPFSet gBadRecoverySet = {
 };
 
 XPFSet gPhysRWSet = {
-	"physrw",
-	xpf_supported_always,
-	{
+	.name="physrw",
+	.supported=xpf_supported_always,
+	.metrics={
 		NULL,
 	}
+};
+
+XPFSet gPerfKRWSet = {
+	.name="perfkrw",
+	.supported=xpf_supported_always,
+	.metrics={
+		"kernelSymbol.perfmon_dev_open",
+		"kernelSymbol.perfmon_devices",
+		"kernelSymbol.vn_kqfilter",
+		"kernelSymbol.cdevsw",
+	},
 };
 
 XPFSet *gSets[] = {
@@ -125,6 +136,7 @@ XPFSet *gSets[] = {
 	&gTrustcache16Set,
 	&gBadRecoverySet,
 	&gPhysRWSet,
+	&gPerfKRWSet,
 };
 
 XPF gXPF = { 0 };
