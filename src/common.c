@@ -567,7 +567,7 @@ void xpf_common_init(void)
 	xpf_item_register("kernelStruct.vm_map.pmap", xpf_find_vm_map_pmap, NULL);
 
 	xpf_item_register("kernelSymbol.perfmon_dev_open", xpf_find_perfmon_dev_open, NULL);
-	xpf_item_register("kernelConstant.perfmon_devices", xpf_find_perfmon_devices, NULL);
+	xpf_item_register("kernelSymbol.perfmon_devices", xpf_find_perfmon_devices, NULL);
 	xpf_item_register("kernelSymbol.vn_kqfilter", xpf_find_vn_kqfilter, NULL);
-	xpf_item_register("kernelConstant.cdevsw", xpf_find_cdevsw, NULL);
+	xpf_item_register("kernelSymbol.cdevsw", xpf_find_cdevsw, NULL);
 }
