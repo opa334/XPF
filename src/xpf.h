@@ -35,6 +35,12 @@ void xpf_print_all_items(void);
 void xpf_stop(void);
 
 typedef struct s_XPF {
+	int kernelFd;
+	void *mappedKernel;
+	size_t kernelSize;
+	void *decompressedKernel;
+	size_t decompressedKernelSize;
+
 	FAT *kernelContainer;
 	MachO *kernel;
 	bool kernelIsFileset;

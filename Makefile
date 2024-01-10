@@ -4,7 +4,7 @@ CHOMA_DYLIB_PATH ?= external/ios/lib
 CFLAGS = -O2
 CFLAGS_MACOS = -Iexternal/include
 CFLAGS_IOS = -Iexternal/ios/include -isysroot $(shell xcrun --sdk iphoneos --show-sdk-path) -miphoneos-version-min=15.0
-LDFLAGS = 
+LDFLAGS = -lcompression
 
 all: libxpf_macos.dylib libxpf.dylib xpf_test_macos xpf_test_ios
 

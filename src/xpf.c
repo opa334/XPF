@@ -2,9 +2,11 @@
 #include <choma/MachO.h>
 #include <choma/PatchFinder.h>
 #include <choma/MachOByteOrder.h>
+#include <choma/BufferedStream.h>
 #include <mach/machine.h>
 #include <sys/_types/_null.h>
 #include "xpf.h"
+#include "decompress.h"
 
 #include "ppl.h"
 #include "non_ppl.h"
@@ -143,8 +145,37 @@ XPF gXPF = { 0 };
 
 int xpf_start_with_kernel_path(const char *kernelPath)
 {
-	FAT *candidate = fat_init_from_path(kernelPath);
-	if (!candidate) return -1;
+	gXPF.kernelFd = open(kernelPath, O_RDONLY);
+	if (gXPF.kernelFd < 0) {
+		xpf_set_error("Failed to open kernelcache");
+		return -1;
+	}
+
+	struct stat s;
+	fstat(gXPF.kernelFd, &s);
+	gXPF.kernelSize = s.st_size;
+	gXPF.mappedKernel = mmap(NULL, gXPF.kernelSize, PROT_READ, MAP_PRIVATE, gXPF.kernelFd, 0);
+	if (gXPF.mappedKernel == MAP_FAILED) {
+		xpf_set_error("Failed to map kernelcache");
+		return -1;
+	}
+
+	MemoryStream *stream = NULL;
+	if (LITTLE_TO_HOST(*(uint32_t *)(gXPF.mappedKernel)) == MH_MAGIC_64) {
+		stream = buffered_stream_init_from_buffer_nocopy(gXPF.mappedKernel, gXPF.kernelSize, 0);
+	}
+	else {
+		gXPF.decompressedKernel = kdecompress(gXPF.mappedKernel, gXPF.kernelSize, &gXPF.decompressedKernelSize);
+		if (gXPF.decompressedKernel) {
+			stream = buffered_stream_init_from_buffer_nocopy(gXPF.decompressedKernel, gXPF.decompressedKernelSize, 0);
+		}
+	}
+
+	FAT *candidate = fat_init_from_memory_stream(stream);
+	if (!candidate) {
+		xpf_set_error("Failed to load kernel macho");
+		return -1;
+	}
 
 	MachO *machoCandidate = NULL;
 	gXPF.kernelIsArm64e = false;
@@ -156,7 +187,10 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 			machoCandidate = fat_find_slice(candidate, CPU_TYPE_ARM64, 0xC0000002);
 		}
 	}
-	if (!machoCandidate) return -1;
+	if (!machoCandidate) {
+		xpf_set_error("Failed to load kernel macho");
+		return -1;
+	}
 
 	gXPF.kernelContainer = candidate;
 	gXPF.kernel = machoCandidate;
@@ -221,11 +255,11 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 	});
 
 	if (gXPF.kernelBase == UINT64_MAX) {
-		xpf_set_error("Unable to find kernel base");
+		xpf_set_error("Failed to find kernel base");
 		return -1;
 	}
 	if (!gXPF.kernelEntry) {
-		xpf_set_error("Unable to find kernel entry point");
+		xpf_set_error("Failed to find kernel entry point");
 		return -1;
 	}
 
@@ -237,7 +271,7 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 	});
 	pfmetric_free(versionMetric);
 	if (!gXPF.kernelVersionString) {
-		xpf_set_error("Unable to find kernel version");
+		xpf_set_error("Failed to find kernel version");
 		return -1;
 	}
 	else {
@@ -412,6 +446,16 @@ const char *xpf_get_error(void)
 
 void xpf_stop(void)
 {
+	if (gXPF.mappedKernel) {
+		munmap(gXPF.mappedKernel, gXPF.kernelSize);
+	}
+	if (gXPF.decompressedKernel) {
+		free(gXPF.decompressedKernel);
+	}
+	if (gXPF.kernelFd >= 0) {
+		close(gXPF.kernelFd);
+	}
+
 	if (gXPF.kernelTextSection) pfsec_free(gXPF.kernelTextSection);
 	if (gXPF.kernelPPLTextSection) pfsec_free(gXPF.kernelPPLTextSection);
 	if (gXPF.kernelStringSection) pfsec_free(gXPF.kernelStringSection);
@@ -435,4 +479,6 @@ void xpf_stop(void)
 		item = item->nextItem;
 		free(curItem);
 	}
+	
+	gXPF = (struct s_XPF){ 0 };
 }
