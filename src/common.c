@@ -189,6 +189,16 @@ uint64_t xpf_find_fatal_error_fmt(void)
 		amfiErrorAddr = vmaddr;
 		*stop = true;
 	});
+
+	if (!amfiErrorAddr) {
+		textSec = gXPF.kernelTextSection;
+		stringSec = gXPF.kernelStringSection;
+		
+		pfmetric_run(stringSec, amfiErrorMetric, ^(uint64_t vmaddr, bool *stop) {
+			amfiErrorAddr = vmaddr;
+			*stop = true;
+		});
+	}
 	pfmetric_free(amfiErrorMetric);
 
 	__block uint64_t fatal_error_fmt = 0;
@@ -213,6 +223,11 @@ uint64_t xpf_find_kalloc_data_external(void)
 	uint32_t blAny = 0, blAnyMask = 0;
 	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAny, &blAnyMask);
 	uint64_t kallocDataExternalBlAddr = pfsec_find_next_inst(sec, fatal_error_fmt, 20, blAny, blAnyMask);
+	if (!kallocDataExternalBlAddr) {
+		sec = gXPF.kernelTextSection;
+		kallocDataExternalBlAddr = pfsec_find_next_inst(sec, fatal_error_fmt, 20, blAny, blAnyMask);
+	}
+
 	uint32_t kallocDataExternalBl = pfsec_read32(sec, kallocDataExternalBlAddr);
 
 	uint64_t kallocDataExternal = 0;
@@ -234,6 +249,11 @@ uint64_t xpf_find_kfree_data_external(void)
 
 	uint32_t ret = gXPF.kernelIsArm64e ? 0xd65f0fff : 0xd65f03c0;
 	uint64_t fatal_error_fmt_end = pfsec_find_next_inst(sec, fatal_error_fmt, 0, ret, 0xffffffff);
+	if (!fatal_error_fmt_end) {
+		sec = gXPF.kernelTextSection;
+		fatal_error_fmt_end = pfsec_find_next_inst(sec, fatal_error_fmt, 0, ret, 0xffffffff);
+	}
+
 	if (fatal_error_fmt_end) {
 		uint32_t movW1_0x400_Inst = 0, movW1_0x400_InstMask = 0;
 		arm64_gen_mov_imm('z', ARM64_REG_W(1), OPT_UINT64(0x400), OPT_UINT64(0), &movW1_0x400_Inst, &movW1_0x400_InstMask);
