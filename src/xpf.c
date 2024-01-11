@@ -63,6 +63,11 @@ XPFSet gPhysmapSet = {
 		"kernelSymbol.vm_page_array_beginning_addr",
 		"kernelSymbol.vm_page_array_ending_addr",
 		"kernelSymbol.vm_first_phys_ppnum",
+		"kernelSymbol.vm_first_phys",
+		"kernelSymbol.vm_last_phys",
+		"kernelSymbol.pp_attr_table",
+		"kernelSymbol.pv_head_table",
+		"kernelSymbol.ptov_table",
 		NULL
 	}
 };
@@ -71,7 +76,9 @@ XPFSet gStructSet = {
 	.name="struct",
 	.supported=xpf_supported_always,
 	.metrics={
+		"kernelStruct.proc.struct_size",
 		"kernelStruct.task.itk_space",
+		"kernelStruct.vm_map.pmap",
 		NULL
 	}
 };
@@ -109,6 +116,10 @@ XPFSet gBadRecoverySet = {
 		"kernelGadget.str_x0_x19_ldr_x20",
 		"kernelGadget.pacda",
 		"kernelSymbol.ml_sign_thread_state",
+		"kernelStruct.thread.recover",
+		"kernelStruct.thread.machine_kstackptr",
+		"kernelStruct.thread.machine_CpuDatap",
+		"kernelStruct.thread.machine_contextData",
 		NULL
 	}
 };
@@ -206,7 +217,9 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 		gXPF.kernelStringSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__TEXT", "__cstring");
 		gXPF.kernelConstSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__TEXT", "__const");
 		gXPF.kernelDataConstSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__DATA_CONST", "__const");
+		gXPF.kernelDataSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__DATA", "__data");
 		gXPF.kernelOSLogSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__TEXT", "__os_log");
+		gXPF.kernelBootdataInit = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__BOOTDATA", "__init");
 		gXPF.kernelAMFITextSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.driver.AppleMobileFileIntegrity", "__TEXT_EXEC", "__text");
 		gXPF.kernelAMFIStringSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.driver.AppleMobileFileIntegrity", "__TEXT", "__cstring");
 		gXPF.kernelInfoPlistSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.security.AppleImage4", "__TEXT", "__info_plist");
@@ -217,7 +230,9 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 		gXPF.kernelStringSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__TEXT", "__cstring");
 		gXPF.kernelConstSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__TEXT", "__const");
 		gXPF.kernelDataConstSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__DATA_CONST", "__const");
+		gXPF.kernelDataSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__DATA", "__data");
 		gXPF.kernelOSLogSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__TEXT", "__os_log");
+		gXPF.kernelBootdataInit = pfsec_init_from_macho(gXPF.kernel, NULL, "__BOOTDATA", "__init");
 		gXPF.kernelPrelinkTextSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__PRELINK_TEXT", "__text");
 		gXPF.kernelPLKTextSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__PLK_TEXT_EXEC", "__text");
 	}
@@ -227,7 +242,9 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 	if (gXPF.kernelStringSection) pfsec_set_cached(gXPF.kernelStringSection, true);
 	if (gXPF.kernelConstSection) pfsec_set_cached(gXPF.kernelConstSection, true);
 	if (gXPF.kernelDataConstSection) pfsec_set_cached(gXPF.kernelDataConstSection, true);
+	if (gXPF.kernelDataSection) pfsec_set_cached(gXPF.kernelDataSection, true);
 	if (gXPF.kernelOSLogSection) pfsec_set_cached(gXPF.kernelOSLogSection, true);
+	if (gXPF.kernelBootdataInit) pfsec_set_cached(gXPF.kernelBootdataInit, true);
 	if (gXPF.kernelPrelinkTextSection) pfsec_set_cached(gXPF.kernelPrelinkTextSection, true);
 	if (gXPF.kernelPLKTextSection) pfsec_set_cached(gXPF.kernelPLKTextSection, true);
 	if (gXPF.kernelAMFITextSection) pfsec_set_cached(gXPF.kernelAMFITextSection, true);
@@ -485,10 +502,12 @@ void xpf_stop(void)
 	if (gXPF.kernelStringSection) pfsec_free(gXPF.kernelStringSection);
 	if (gXPF.kernelConstSection) pfsec_free(gXPF.kernelConstSection);
 	if (gXPF.kernelDataConstSection) pfsec_free(gXPF.kernelDataConstSection);
+	if (gXPF.kernelDataSection) pfsec_free(gXPF.kernelDataSection);
 	if (gXPF.kernelOSLogSection) pfsec_free(gXPF.kernelOSLogSection);
 	if (gXPF.kernelAMFITextSection) pfsec_free(gXPF.kernelAMFITextSection);
 	if (gXPF.kernelAMFIStringSection) pfsec_free(gXPF.kernelAMFIStringSection);
 	if (gXPF.kernelPrelinkTextSection) pfsec_free(gXPF.kernelPrelinkTextSection);
+	if (gXPF.kernelBootdataInit) pfsec_free(gXPF.kernelBootdataInit);
 	if (gXPF.kernelPLKTextSection) pfsec_free(gXPF.kernelPLKTextSection);
 	if (gXPF.kernelInfoPlistSection) pfsec_free(gXPF.kernelInfoPlistSection);
 	if (gXPF.kernelContainer) fat_free(gXPF.kernelContainer);

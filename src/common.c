@@ -460,6 +460,57 @@ uint64_t xpf_find_vm_map_pmap(void)
 	return vm_map_pmap;
 }
 
+uint64_t xpf_find_proc_struct_size(void)
+{
+	if (strcmp(gXPF.darwinVersion, "22.0.0") >= 0) {
+		// iOS >=16
+		PFStringMetric *procTaskStringMetric = pfmetric_string_init("proc_task");
+		__block uint64_t procTaskStringAddr = 0;
+		pfmetric_run(gXPF.kernelStringSection, procTaskStringMetric, ^(uint64_t vmaddr, bool *stop) {
+			procTaskStringAddr = vmaddr;
+			*stop = true;
+		});
+		pfmetric_free(procTaskStringMetric);
+
+		PFXrefMetric *procTaskXrefMetric = pfmetric_xref_init(procTaskStringAddr, XREF_TYPE_MASK_REFERENCE);
+		__block uint64_t procTaskStringXref = 0;
+		pfmetric_run(gXPF.kernelTextSection, procTaskXrefMetric, ^(uint64_t vmaddr, bool *stop) {
+			procTaskStringXref = vmaddr;
+			*stop = true;
+		});
+		pfmetric_free(procTaskXrefMetric);
+
+		uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
+		arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
+		uint64_t ldrAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, procTaskStringXref, 0x20, ldrAnyInst, ldrAnyMask);
+		
+		uint64_t proc_struct_sizeAddr = pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
+		return pfsec_read64(gXPF.kernelDataSection, proc_struct_sizeAddr);
+	}
+	else {
+		// iOS <=15
+
+		PFStringMetric *procStringMetric = pfmetric_string_init("proc");
+		__block uint64_t procStringAddr = 0;
+		pfmetric_run(gXPF.kernelStringSection, procStringMetric, ^(uint64_t vmaddr, bool *stop) {
+			procStringAddr = vmaddr;
+			*stop = true;
+		});
+		pfmetric_free(procStringMetric);
+
+		uint64_t mask = 0x0000ffffffffffff;
+		PFPatternMetric *patternMetric = pfmetric_pattern_init(&procStringAddr, &mask, sizeof(procStringAddr), sizeof(uint64_t));
+		__block uint64_t stringXrefAddr = 0;
+		pfmetric_run(gXPF.kernelBootdataInit, patternMetric, ^(uint64_t vmaddr, bool *stop) {
+			stringXrefAddr = vmaddr;
+			*stop = true;
+		});
+		pfmetric_free(patternMetric);
+
+		return pfsec_read64(gXPF.kernelBootdataInit, stringXrefAddr + 8);
+	}
+}
+
 uint64_t xpf_find_perfmon_dev_open(void)
 {
 	PFStringMetric *perfmonMetric = pfmetric_string_init("perfmon: attempt to open unsupported source: 0x%x @%s:%d");
@@ -584,6 +635,7 @@ void xpf_common_init(void)
 	xpf_item_register("kernelStruct.task.itk_space", xpf_find_task_itk_space, NULL);
 
 	xpf_item_register("kernelStruct.vm_map.pmap", xpf_find_vm_map_pmap, NULL);
+	xpf_item_register("kernelStruct.proc.struct_size", xpf_find_proc_struct_size, NULL);
 
 	xpf_item_register("kernelSymbol.perfmon_dev_open", xpf_find_perfmon_dev_open, NULL);
 	xpf_item_register("kernelSymbol.perfmon_devices", xpf_find_perfmon_devices, NULL);
