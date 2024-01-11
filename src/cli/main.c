@@ -13,7 +13,6 @@ int main(int argc, char *argv[]) {
 
 			printf("Kernel base: 0x%llx\n", gXPF.kernelBase);
 			printf("Kernel entry: 0x%llx\n", gXPF.kernelEntry);
-
 			xpf_print_all_items();
 
 			/*xpc_object_t serializedSystemInfo = xpf_construct_offset_dictionary((const char* []) {

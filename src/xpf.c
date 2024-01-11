@@ -49,6 +49,9 @@ XPFSet gTranslationSet = {
 		"kernelSymbol.gPhysBase",
 		"kernelSymbol.gPhysSize",
 		"kernelSymbol.ptov_table",
+		"kernelConstant.pointer_mask",
+		"kernelConstant.T1SZ_BOOT",
+		"kernelConstant.ARM_TT_L1_INDEX_MASK",
 		NULL
 	}
 };
@@ -126,6 +129,7 @@ XPFSet gPerfKRWSet = {
 		"kernelSymbol.perfmon_devices",
 		"kernelSymbol.vn_kqfilter",
 		"kernelSymbol.cdevsw",
+		NULL
 	},
 };
 

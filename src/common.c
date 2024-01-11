@@ -93,7 +93,7 @@ uint64_t xpf_find_T1SZ_BOOT(void)
 	return T1SZ_BOOT;
 }
 
-uint64_t xpf_find_ARM_16K_TT_L1_INDEX_MASK(void)
+uint64_t xpf_find_ARM_TT_L1_INDEX_MASK(void)
 {
 	uint64_t T1SZ_BOOT = xpf_item_resolve("kernelConstant.T1SZ_BOOT");
 	switch (T1SZ_BOOT) {
@@ -102,7 +102,7 @@ uint64_t xpf_find_ARM_16K_TT_L1_INDEX_MASK(void)
 		case 25:
 		return 0x0000007000000000ULL;
 		default:
-		printf("ARM_16K_TT_L1_INDEX_MASK: Unexpected T1SZ_BOOT??? (%llu)\n", T1SZ_BOOT);
+		printf("ARM_TT_L1_INDEX_MASK: Unexpected T1SZ_BOOT??? (%llu)\n", T1SZ_BOOT);
 	}
 	return 0;
 }
@@ -464,21 +464,19 @@ uint64_t xpf_find_perfmon_dev_open(void)
 uint64_t xpf_find_perfmon_devices(void)
 {
 	uint64_t perfmon_dev_open = xpf_item_resolve("kernelSymbol.perfmon_dev_open");
-	
-	if ((gXPF.kernelIsArm64e && strcmp(gXPF.darwinVersion, "23.0.0") != 0) 
-		|| (!gXPF.kernelIsArm64e && strcmp(gXPF.darwinVersion, "21.0.0") != 0)) {
-		uint32_t movW9_0xA0 = 0, movW9_0xA0Mask = 0;
-		arm64_gen_mov_imm('z', ARM64_REG_W(9), OPT_UINT64(0xA0), OPT_UINT64_NONE, &movW9_0xA0, &movW9_0xA0Mask);
 
-		uint64_t movAddr = pfsec_find_next_inst(gXPF.kernelTextSection, perfmon_dev_open, 0, movW9_0xA0, movW9_0xA0Mask);
-		return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, movAddr + 0x8);
-	} else {
-		uint32_t movW10_0x28 = 0, movW10_0x28Mask = 0;
-		arm64_gen_mov_imm('z', ARM64_REG_W(10), OPT_UINT64(0x28), OPT_UINT64_NONE, &movW10_0x28, &movW10_0x28Mask);
+	uint32_t movWAny_0x28Inst = 0, movWAny_0x28Mask = 0;
+	arm64_gen_mov_imm('z', ARM64_REG_ANY, OPT_UINT64(0x28), OPT_UINT64_NONE, &movWAny_0x28Inst, &movWAny_0x28Mask);
 
-		uint64_t movAddr = pfsec_find_next_inst(gXPF.kernelTextSection, perfmon_dev_open, 0, movW10_0x28, movW10_0x28Mask);
-		return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, movAddr - 0x4);
+	// The "add" of the "adrp, add" we want is either one instruction before this or three after it
+	uint64_t movAddr = pfsec_find_next_inst(gXPF.kernelTextSection, perfmon_dev_open, 0, movWAny_0x28Inst, movWAny_0x28Mask);
+
+	uint64_t perfmon_devices = pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, movAddr - 4);
+	if (!perfmon_devices) {
+		perfmon_devices = pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, movAddr + 12);
 	}
+	
+	return perfmon_devices;
 }
 
 uint64_t xpf_find_vn_kqfilter(void)
@@ -555,7 +553,7 @@ void xpf_common_init(void)
 	xpf_item_register("kernelSymbol.pointer_mask", xpf_find_pointer_mask_symbol, NULL);
 	xpf_item_register("kernelConstant.pointer_mask", xpf_find_pointer_mask, NULL);
 	xpf_item_register("kernelConstant.T1SZ_BOOT", xpf_find_T1SZ_BOOT, NULL);
-	xpf_item_register("kernelConstant.ARM_16K_TT_L1_INDEX_MASK", xpf_find_ARM_16K_TT_L1_INDEX_MASK, NULL);
+	xpf_item_register("kernelConstant.ARM_TT_L1_INDEX_MASK", xpf_find_ARM_TT_L1_INDEX_MASK, NULL);
 
 	xpf_item_register("kernelSymbol.vm_page_array_beginning_addr", xpf_find_vm_reference, (void *)(uint32_t)1);
 	xpf_item_register("kernelSymbol.vm_page_array_ending_addr", xpf_find_vm_reference, (void *)(uint32_t)2);
