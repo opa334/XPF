@@ -465,7 +465,8 @@ uint64_t xpf_find_perfmon_devices(void)
 {
 	uint64_t perfmon_dev_open = xpf_item_resolve("kernelSymbol.perfmon_dev_open");
 	
-	if (gXPF.kernelIsArm64e && strcmp(gXPF.darwinVersion, "23.0.0") != 0) {
+	if ((gXPF.kernelIsArm64e && strcmp(gXPF.darwinVersion, "23.0.0") != 0) 
+		|| (!gXPF.kernelIsArm64e && strcmp(gXPF.darwinVersion, "21.0.0") != 0)) {
 		uint32_t movW9_0xA0 = 0, movW9_0xA0Mask = 0;
 		arm64_gen_mov_imm('z', ARM64_REG_W(9), OPT_UINT64(0xA0), OPT_UINT64_NONE, &movW9_0xA0, &movW9_0xA0Mask);
 
