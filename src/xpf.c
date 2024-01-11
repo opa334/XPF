@@ -209,6 +209,7 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 		gXPF.kernelOSLogSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__TEXT", "__os_log");
 		gXPF.kernelAMFITextSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.driver.AppleMobileFileIntegrity", "__TEXT_EXEC", "__text");
 		gXPF.kernelAMFIStringSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.driver.AppleMobileFileIntegrity", "__TEXT", "__cstring");
+		gXPF.kernelInfoPlistSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.security.AppleImage4", "__TEXT", "__info_plist");
 	}
 	else {
 		gXPF.kernelTextSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__TEXT_EXEC", "__text");
@@ -231,6 +232,7 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 	if (gXPF.kernelPLKTextSection) pfsec_set_cached(gXPF.kernelPLKTextSection, true);
 	if (gXPF.kernelAMFITextSection) pfsec_set_cached(gXPF.kernelAMFITextSection, true);
 	if (gXPF.kernelAMFIStringSection) pfsec_set_cached(gXPF.kernelAMFIStringSection, true);
+	if (gXPF.kernelInfoPlistSection) pfsec_set_cached(gXPF.kernelInfoPlistSection, true);
 
 	gXPF.kernelBase = UINT64_MAX;
 	gXPF.kernelEntry = 0;
@@ -274,6 +276,17 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 		*stop = true;
 	});
 	pfmetric_free(versionMetric);
+
+	if (gXPF.kernelInfoPlistSection) {
+		const char *infoPlistString = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
+		PFPatternMetric *infoPlistMetric = pfmetric_pattern_init((void *)infoPlistString, NULL, strlen(infoPlistString), sizeof(uint8_t));
+		pfmetric_run(gXPF.kernelInfoPlistSection, infoPlistMetric, ^(uint64_t vmaddr, bool *stop) {
+			int r = pfsec_read_string(gXPF.kernelInfoPlistSection, vmaddr, &gXPF.kernelInfoPlist);
+			*stop = true;
+		});
+		pfmetric_free(infoPlistMetric);
+	}
+
 	if (!gXPF.kernelVersionString) {
 		xpf_set_error("Failed to find kernel version");
 		return -1;
@@ -286,6 +299,13 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 		gXPF.darwinVersion = strdup(darwinVersion);
 		gXPF.xnuBuild = strdup(xnuBuild);
 		gXPF.xnuPlatform = strdup(xnuPlatform);
+
+		if (gXPF.kernelInfoPlistSection) {
+			char osVersion[100];
+			const char *DTPlatformVersion = strstr(gXPF.kernelInfoPlist, "<key>DTPlatformVersion</key>");
+			sscanf(DTPlatformVersion, "<key>DTPlatformVersion</key>\t<string>%9[^<]</string>", osVersion);
+			gXPF.osVersion = strdup(osVersion);
+		}
 	}
 
 	xpf_ppl_init();
@@ -470,12 +490,15 @@ void xpf_stop(void)
 	if (gXPF.kernelAMFIStringSection) pfsec_free(gXPF.kernelAMFIStringSection);
 	if (gXPF.kernelPrelinkTextSection) pfsec_free(gXPF.kernelPrelinkTextSection);
 	if (gXPF.kernelPLKTextSection) pfsec_free(gXPF.kernelPLKTextSection);
+	if (gXPF.kernelInfoPlistSection) pfsec_free(gXPF.kernelInfoPlistSection);
 	if (gXPF.kernelContainer) fat_free(gXPF.kernelContainer);
 
 	if (gXPF.kernelVersionString) free(gXPF.kernelVersionString);
 	if (gXPF.darwinVersion) free(gXPF.darwinVersion);
 	if (gXPF.xnuBuild) free(gXPF.xnuBuild);
 	if (gXPF.xnuPlatform) free(gXPF.xnuPlatform);
+	if (gXPF.osVersion) free(gXPF.osVersion);
+	if (gXPF.kernelInfoPlist) free(gXPF.kernelInfoPlist);
 
 	XPFItem *item = gXPF.firstItem;
 	while (item) {

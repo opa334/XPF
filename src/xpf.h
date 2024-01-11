@@ -46,9 +46,11 @@ typedef struct s_XPF {
 	bool kernelIsFileset;
 	bool kernelIsArm64e;
 	char *kernelVersionString;
+	char *kernelInfoPlist;
 	char *darwinVersion;
 	char *xnuBuild;
 	char *xnuPlatform;
+	char *osVersion;
 
 	uint64_t kernelBase;
 	uint64_t kernelEntry;
@@ -63,6 +65,7 @@ typedef struct s_XPF {
 	PFSection *kernelPLKTextSection;
 	PFSection *kernelAMFITextSection;
 	PFSection *kernelAMFIStringSection;
+	PFSection *kernelInfoPlistSection;
 
 	XPFItem *firstItem;
 } XPF;
