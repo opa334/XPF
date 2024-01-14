@@ -500,14 +500,16 @@ uint64_t xpf_find_proc_struct_size(void)
 
 		uint64_t mask = 0x0000ffffffffffff;
 		PFPatternMetric *patternMetric = pfmetric_pattern_init(&procStringAddr, &mask, sizeof(procStringAddr), sizeof(uint64_t));
-		__block uint64_t stringXrefAddr = 0;
+		__block uint64_t proc_struct_size = 0;
 		pfmetric_run(gXPF.kernelBootdataInit, patternMetric, ^(uint64_t vmaddr, bool *stop) {
-			stringXrefAddr = vmaddr;
-			*stop = true;
+			uint64_t candidate = pfsec_read64(gXPF.kernelBootdataInit, vmaddr + 8);
+			if (candidate != 0) {
+				proc_struct_size = candidate;
+				*stop = true;
+			}
 		});
-		pfmetric_free(patternMetric);
 
-		return pfsec_read64(gXPF.kernelBootdataInit, stringXrefAddr + 8);
+		return proc_struct_size;
 	}
 }
 
