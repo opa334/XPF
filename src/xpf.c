@@ -258,7 +258,11 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 			struct segment_command_64 *segCmd = (struct segment_command_64 *)cmd;
 			SEGMENT_COMMAND_64_APPLY_BYTE_ORDER(segCmd, LITTLE_TO_HOST_APPLIER);
 			if (segCmd->vmaddr < gXPF.kernelBase) {
-				gXPF.kernelBase = segCmd->vmaddr;
+				if (strncmp(segCmd->segname, "__PRELINK", 9) != 0 
+					&& strncmp(segCmd->segname, "__PLK", 5) != 0) {
+					// PRELINK is before the actual base, but we don't care about it
+					gXPF.kernelBase = segCmd->vmaddr;
+				}
 			}
 		}
 		else if (loadCommand.cmd == LC_UNIXTHREAD) {
@@ -391,7 +395,7 @@ uint64_t xpfsec_read_ptr(PFSection *section, uint64_t vmaddr)
 	uint64_t r = pfsec_read64(gXPF.kernelDataConstSection, vmaddr);
 	if ((r & 0xff00000000000000) == 0x8000000000000000) {
 		r &= 0x00000000ffffffff;
-		r += 0xfffffff007004000;
+		r += gXPF.kernelBase;
 	}
 	return r;
 }
