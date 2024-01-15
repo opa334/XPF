@@ -114,9 +114,16 @@ uint64_t xpf_find_phystokv(void)
 	uint32_t blAny = 0, blAnyMask = 0;
 	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAny, &blAnyMask);
 
-	uint64_t blPhystokvAddr = pfsec_find_next_inst(gXPF.kernelTextSection, arm_vm_init, 100, blAny, blAnyMask);
+	// On ARM_LARGE_MEMORY kernels, the second bl is phystokv
+	uint32_t n = gXPF.kernelBase == 0xfffffe0007004000 ? 2 : 1;
+
+	uint64_t blAddr = arm_vm_init;
+	for (uint32_t i = 0; i < n; i++) {
+		blAddr = pfsec_find_next_inst(gXPF.kernelTextSection, blAddr + 4, 0, blAny, blAnyMask);
+	}
+
 	uint64_t phystokv = 0;
-	arm64_dec_b_l(pfsec_read32(gXPF.kernelTextSection, blPhystokvAddr), blPhystokvAddr, &phystokv, NULL);
+	arm64_dec_b_l(pfsec_read32(gXPF.kernelTextSection, blAddr), blAddr, &phystokv, NULL);
 	return phystokv;
 }
 
