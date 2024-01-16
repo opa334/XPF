@@ -107,6 +107,52 @@ uint64_t xpf_find_ARM_TT_L1_INDEX_MASK(void)
 	return 0;
 }
 
+uint64_t xpf_find_PT_INDEX_MAX(void)
+{
+	PFSection *textSection = gXPF.kernelIsArm64e ? gXPF.kernelPPLTextSection : gXPF.kernelTextSection;
+
+	PFStringMetric *stringMetric = pfmetric_string_init("%s: out of PTD entries and for some reason didn't allocate more %d %p");
+	__block uint64_t stringAddr = 0;
+	pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop){
+		stringAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(stringMetric);
+
+	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
+	__block uint64_t xrefAddr = 0;
+	pfmetric_run(textSection, xrefMetric, ^(uint64_t vmaddr, bool *stop){
+		xrefAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(xrefMetric);
+
+	uint32_t movnAny0Inst = 0, movnAny0Mask = 0;
+	arm64_gen_mov_imm('n', ARM64_REG_ANY, OPT_UINT64(0), OPT_UINT64(0), &movnAny0Inst, &movnAny0Mask);
+	uint64_t movAddr = pfsec_find_prev_inst(textSection, xrefAddr, 100, movnAny0Inst, movnAny0Mask);
+
+	arm64_register movReg;
+	int r = arm64_dec_mov_imm(pfsec_read32(textSection, movAddr), &movReg, NULL, NULL, NULL);
+
+	uint32_t strInst = 0, strMask = 0;
+	arm64_gen_str_imm(0, LDR_STR_TYPE_UNSIGNED, movReg, ARM64_REG_ANY, OPT_UINT64_NONE, &strInst, &strMask);
+	uint32_t ret = gXPF.kernelIsArm64e ? 0xd65f0fff : 0xd65f03c0;
+
+	// We need to count all "str [movReg], ?" instructions until we hit a RET(AB), then we have the PT_INDEX_MAX
+	// Apparently the first one is an STP :( so we start with 1
+	uint64_t PT_INDEX_MAX = 1;
+	for (int i = 0; i < 100; i++) {
+		uint32_t inst = pfsec_read32(textSection, movAddr + (i * 4));
+		if ((inst & strMask) == strInst) {
+			PT_INDEX_MAX++;
+		}
+		else if (inst == ret) {
+			break;
+		}
+	}
+	return PT_INDEX_MAX;
+}
+
 uint64_t xpf_find_phystokv(void)
 {
 	uint64_t arm_vm_init = xpf_item_resolve("kernelSymbol.arm_vm_init");
@@ -634,6 +680,8 @@ void xpf_common_init(void)
 	xpf_item_register("kernelConstant.pointer_mask", xpf_find_pointer_mask, NULL);
 	xpf_item_register("kernelConstant.T1SZ_BOOT", xpf_find_T1SZ_BOOT, NULL);
 	xpf_item_register("kernelConstant.ARM_TT_L1_INDEX_MASK", xpf_find_ARM_TT_L1_INDEX_MASK, NULL);
+
+	xpf_item_register("kernelConstant.PT_INDEX_MAX", xpf_find_PT_INDEX_MAX, NULL);
 
 	xpf_item_register("kernelSymbol.vm_page_array_beginning_addr", xpf_find_vm_reference, (void *)(uint32_t)1);
 	xpf_item_register("kernelSymbol.vm_page_array_ending_addr", xpf_find_vm_reference, (void *)(uint32_t)2);
