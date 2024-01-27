@@ -657,6 +657,42 @@ uint64_t xpf_find_cdevsw(void)
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, movAddr + 0x8);
 }
 
+uint64_t xpf_find_proc_apply_sandbox(void)
+{
+	PFStringMetric *stringMetric = pfmetric_string_init("Sandbox failed to revoke host port (%d) for pid %d");
+	__block uint64_t sandboxFailedStringAddr = 0;
+	pfmetric_run(gXPF.kernelOSLogSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
+		sandboxFailedStringAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(stringMetric);
+
+	__block uint64_t proc_apply_sandbox = 0;
+	PFXrefMetric *xrefMetric = pfmetric_xref_init(sandboxFailedStringAddr, XREF_TYPE_MASK_REFERENCE);
+	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop){
+		proc_apply_sandbox = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
+		*stop = true;
+	});
+	pfmetric_free(xrefMetric);
+
+	return proc_apply_sandbox;
+}
+
+uint64_t xpf_find_mac_label_set(void)
+{
+	uint64_t proc_apply_sandbox = xpf_item_resolve("kernelSymbol.proc_apply_sandbox");
+
+	uint32_t blAnyInst = 0, blAnyMask = 0;
+	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAnyInst, &blAnyMask);
+
+	uint64_t firstBLAddr = pfsec_find_next_inst(gXPF.kernelTextSection, proc_apply_sandbox, 100, blAnyInst, blAnyMask);
+	uint64_t secondBLAddr = pfsec_find_next_inst(gXPF.kernelTextSection, firstBLAddr+4, 100, blAnyInst, blAnyMask);
+
+	uint64_t mac_label_set = 0;
+	arm64_dec_b_l(pfsec_read32(gXPF.kernelTextSection, secondBLAddr), secondBLAddr, &mac_label_set, NULL);
+	return mac_label_set;
+}
+
 void xpf_common_init(void)
 {
 	xpf_item_register("kernelSymbol.start_first_cpu", xpf_find_start_first_cpu, NULL);
@@ -698,4 +734,7 @@ void xpf_common_init(void)
 	xpf_item_register("kernelSymbol.perfmon_devices", xpf_find_perfmon_devices, NULL);
 	xpf_item_register("kernelSymbol.vn_kqfilter", xpf_find_vn_kqfilter, NULL);
 	xpf_item_register("kernelSymbol.cdevsw", xpf_find_cdevsw, NULL);
+
+	xpf_item_register("kernelSymbol.proc_apply_sandbox", xpf_find_proc_apply_sandbox, NULL);
+	xpf_item_register("kernelSymbol.mac_label_set", xpf_find_mac_label_set, NULL);
 }

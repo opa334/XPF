@@ -121,6 +121,7 @@ XPFSet gBadRecoverySet = {
 		"kernelStruct.thread.machine_kstackptr",
 		"kernelStruct.thread.machine_CpuDatap",
 		"kernelStruct.thread.machine_contextData",
+		"kernelSymbol.mac_label_set",
 		NULL
 	}
 };
