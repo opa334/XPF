@@ -73,7 +73,7 @@ uint64_t xpf_find_pointer_mask_symbol(uint32_t n)
 uint64_t xpf_find_pointer_mask(void)
 {
 	uint64_t pointer_mask = pfsec_read64(gXPF.kernelConstSection, xpf_item_resolve("kernelSymbol.pointer_mask"));
-	if (pointer_mask != 0xffffff8000000000 && pointer_mask != 0xffff800000000000) {
+	if (pointer_mask != 0xffffff8000000000 && pointer_mask != 0xffff800000000000 && pointer_mask != 0xffffffc000000000) {
 		xpf_set_error("xpf_find_pointer_mask error: Unexpected PAC mask: 0x%llx", pointer_mask);
 		return 0;
 	}
@@ -101,6 +101,8 @@ uint64_t xpf_find_ARM_TT_L1_INDEX_MASK(void)
 		return 0x00007ff000000000ULL;
 		case 25:
 		return 0x0000007000000000ULL;
+		case 26:
+		return 0x0000003fc0000000ULL;
 		default:
 		printf("ARM_TT_L1_INDEX_MASK: Unexpected T1SZ_BOOT??? (%llu)\n", T1SZ_BOOT);
 	}
