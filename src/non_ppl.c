@@ -117,12 +117,12 @@ uint64_t xpf_find_non_ppl_pmap_tt_deallocate_reference(uint32_t n)
 // TODO
 uint64_t xpf_find_non_ppl_vm_last_phys(void)
 {
-    return 0;
+    return 0xFFFFFF8000000000;
 }
 
 uint64_t xpf_find_non_ppl_pp_attr_table(void)
 {
-    return 0;
+    return 0xFFFFFF8000000000;
 }
 
 void xpf_non_ppl_init(void)
