@@ -4,6 +4,10 @@
 
 bool xpf_bad_recovery_supported(void)
 {
+	if (!gXPF.kernelIsArm64e) {
+		// non-PACed devices
+		return false;
+	}
 	if (strcmp(gXPF.darwinVersion, "21.0.0") >= 0 && strcmp(gXPF.darwinVersion, "21.5.0") < 0) {
 		// iOS 15.0 - 15.4.1: Supported
 		return true;
