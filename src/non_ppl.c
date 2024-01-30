@@ -99,7 +99,7 @@ uint64_t xpf_find_non_ppl_pmap_tt_deallocate(void)
 
 uint64_t xpf_find_non_ppl_pmap_tt_deallocate_reference(uint32_t n)
 {
-    uint64_t pmap_tt_deallocate = xpf_item_resolve("kernelSymbol.non_ppl_pmap_tt_deallocate");
+    uint64_t pmap_tt_deallocate = xpf_item_resolve("kernelSymbol.pmap_tt_deallocate");
     
     uint32_t adrpInst = 0, adrpInstAny = 0;
     arm64_gen_adr_p(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_REG_ANY, &adrpInst, &adrpInstAny);
@@ -128,7 +128,7 @@ uint64_t xpf_find_non_ppl_pp_attr_table(void)
 void xpf_non_ppl_init(void)
 {
     if (!gXPF.kernelIsArm64e) {
-        xpf_item_register("kernelSymbol.non_ppl_pmap_tt_deallocate", xpf_find_non_ppl_pmap_tt_deallocate, NULL);
+        xpf_item_register("kernelSymbol.pmap_tt_deallocate", xpf_find_non_ppl_pmap_tt_deallocate, NULL);
         xpf_item_register("kernelSymbol.vm_first_phys", xpf_find_non_ppl_pmap_tt_deallocate_reference, (void*)(uint32_t)1);
         xpf_item_register("kernelSymbol.pv_head_table", xpf_find_non_ppl_pmap_tt_deallocate_reference, (void*)(uint32_t)2);
         
