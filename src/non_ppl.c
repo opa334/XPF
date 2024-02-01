@@ -101,10 +101,20 @@ uint64_t xpf_find_non_ppl_pmap_tt_deallocate_reference(uint32_t n)
 {
     uint64_t pmap_tt_deallocate = xpf_item_resolve("kernelSymbol.pmap_tt_deallocate");
     
+    uint32_t blAny = 0, blAnyMask = 0;
+    arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAny, &blAnyMask);
+    
+    uint64_t toCheck = pmap_tt_deallocate;
+    uint64_t blAddr = 0;
+    for (int i = 0; i < 2; i++) {
+        blAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 80, blAny, blAnyMask);
+        toCheck = blAddr + 4;
+    }
+    
     uint32_t adrpInst = 0, adrpInstAny = 0;
     arm64_gen_adr_p(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_REG_ANY, &adrpInst, &adrpInstAny);
     
-    uint64_t toCheck = pmap_tt_deallocate;
+    toCheck = blAddr;
     uint64_t adrpAddr = 0;
     for (int i = 0; i < n; i++) {
         adrpAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 80, adrpInst, adrpInstAny);
