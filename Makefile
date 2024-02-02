@@ -3,7 +3,7 @@ CC = clang
 CHOMA_DYLIB_PATH ?= external/ios/lib
 CFLAGS = -O2
 CFLAGS_MACOS = -Iexternal/include
-CFLAGS_IOS = -Iexternal/ios/include -isysroot $(shell xcrun --sdk iphoneos --show-sdk-path) -miphoneos-version-min=15.0
+CFLAGS_IOS = -Iexternal/ios/include -isysroot $(shell xcrun --sdk iphoneos --show-sdk-path) -miphoneos-version-min=15.0 -arch arm64 -arch arm64e
 LDFLAGS = -lcompression
 
 all: libxpf_macos.dylib libxpf.dylib xpf_test_macos xpf_test_ios

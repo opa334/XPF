@@ -276,7 +276,11 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 				uint32_t count = LITTLE_TO_HOST(*(uint32_t *)(cmdData + 4));
 				if (flavor == ARM_THREAD_STATE64) {
 					arm_thread_state64_t *threadState = (arm_thread_state64_t *)(cmdData + 8);
-					gXPF.kernelEntry = LITTLE_TO_HOST(arm_thread_state64_get_pc(*threadState));
+#ifdef __arm64e__
+					gXPF.kernelEntry = LITTLE_TO_HOST((uint64_t)threadState->__opaque_pc);
+#else
+					gXPF.kernelEntry = LITTLE_TO_HOST((uint64_t)threadState->__pc);
+#endif
 				}
 				cmdData += (8 + count);
 			}
