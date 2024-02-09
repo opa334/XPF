@@ -133,6 +133,7 @@ XPFSet gSandboxSet = {
 		"kernelConstant.nsysent",
 		"kernelConstant.mach_trap_count",
 		"kernelSymbol.mach_kobj_count",
+		NULL,
 	}
 };
 
