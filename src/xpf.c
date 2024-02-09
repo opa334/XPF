@@ -126,6 +126,16 @@ XPFSet gBadRecoverySet = {
 	}
 };
 
+XPFSet gSandboxSet = {
+	.name="sandbox",
+	.supported=xpf_supported_always,
+	.metrics={
+		"kernelConstant.nsysent",
+		"kernelConstant.mach_trap_count",
+		"kernelSymbol.mach_kobj_count",
+	}
+};
+
 XPFSet gPhysRWSet = {
 	.name="physrw",
 	.supported=xpf_supported_always,
@@ -149,6 +159,7 @@ XPFSet gPerfKRWSet = {
 XPFSet *gSets[] = {
 	&gBaseSet,
 	&gTranslationSet,
+	&gSandboxSet,
 	&gPhysmapSet,
 	&gStructSet,
 	&gTrustcache15Set,
@@ -520,6 +531,8 @@ void xpf_stop(void)
 	if (gXPF.kernelOSLogSection) pfsec_free(gXPF.kernelOSLogSection);
 	if (gXPF.kernelAMFITextSection) pfsec_free(gXPF.kernelAMFITextSection);
 	if (gXPF.kernelAMFIStringSection) pfsec_free(gXPF.kernelAMFIStringSection);
+	if (gXPF.kernelSandboxTextSection) pfsec_free(gXPF.kernelSandboxTextSection);
+	if (gXPF.kernelSandboxStringSection) pfsec_free(gXPF.kernelSandboxStringSection);
 	if (gXPF.kernelPrelinkTextSection) pfsec_free(gXPF.kernelPrelinkTextSection);
 	if (gXPF.kernelBootdataInit) pfsec_free(gXPF.kernelBootdataInit);
 	if (gXPF.kernelPLKTextSection) pfsec_free(gXPF.kernelPLKTextSection);
