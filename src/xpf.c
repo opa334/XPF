@@ -224,6 +224,8 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 		gXPF.kernelBootdataInit = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__BOOTDATA", "__init");
 		gXPF.kernelAMFITextSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.driver.AppleMobileFileIntegrity", "__TEXT_EXEC", "__text");
 		gXPF.kernelAMFIStringSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.driver.AppleMobileFileIntegrity", "__TEXT", "__cstring");
+		gXPF.kernelSandboxTextSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.security.sandbox", "__TEXT_EXEC", "__text");
+		gXPF.kernelSandboxStringSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.security.sandbox", "__TEXT", "__cstring");
 		gXPF.kernelInfoPlistSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.security.AppleImage4", "__TEXT", "__info_plist");
 	}
 	else {
@@ -251,6 +253,8 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 	if (gXPF.kernelPLKTextSection) pfsec_set_cached(gXPF.kernelPLKTextSection, true);
 	if (gXPF.kernelAMFITextSection) pfsec_set_cached(gXPF.kernelAMFITextSection, true);
 	if (gXPF.kernelAMFIStringSection) pfsec_set_cached(gXPF.kernelAMFIStringSection, true);
+	if (gXPF.kernelSandboxTextSection) pfsec_set_cached(gXPF.kernelSandboxTextSection, true);
+	if (gXPF.kernelSandboxStringSection) pfsec_set_cached(gXPF.kernelSandboxStringSection, true);
 	if (gXPF.kernelInfoPlistSection) pfsec_set_cached(gXPF.kernelInfoPlistSection, true);
 
 	gXPF.kernelBase = UINT64_MAX;

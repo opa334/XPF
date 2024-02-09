@@ -695,6 +695,82 @@ uint64_t xpf_find_mac_label_set(void)
 	return mac_label_set;
 }
 
+uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
+{
+	PFSection *textSec = (gXPF.kernelSandboxTextSection ?: gXPF.kernelTextSection);
+	PFSection *stringSec = (gXPF.kernelSandboxStringSection ?: gXPF.kernelStringSection);
+	if (!gXPF.kernelIsArm64e && !gXPF.kernelIsFileset) {
+		textSec = gXPF.kernelPLKTextSection;
+		stringSec = gXPF.kernelPrelinkTextSection;
+	}
+
+	//PFStringMetric *stringMetric = pfmetric_string_init("\"invalid # of syscalls from xnu\" @%s:%d");
+	PFStringMetric *stringMetric = pfmetric_string_init("sandbox.syscallmasks");
+	__block uint64_t syscallMasksStringAddr = 0;
+	pfmetric_run(stringSec, stringMetric, ^(uint64_t vmaddr, bool *stop) {
+		syscallMasksStringAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(stringMetric);
+
+	PFXrefMetric *stringXrefMetric = pfmetric_xref_init(syscallMasksStringAddr, XREF_TYPE_MASK_REFERENCE);
+	__block uint64_t syscalllMasksRefAddr = 0;
+	pfmetric_run(textSec, stringXrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		syscalllMasksRefAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(stringXrefMetric);
+
+	uint32_t blAnyInst = 0, blAnyMask = 0;
+	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAnyInst, &blAnyMask);
+	uint64_t blAddr = pfsec_find_prev_inst(textSec, syscalllMasksRefAddr, 100, blAnyInst, blAnyMask);
+	uint64_t proc_get_syscall_filter_mask_size = 0;
+	arm64_dec_b_l(pfsec_read32(textSec, blAddr), blAddr, &proc_get_syscall_filter_mask_size, NULL);
+
+	uint64_t resolved = pfsec_arm64_resolve_stub(textSec, proc_get_syscall_filter_mask_size);
+	if (resolved != proc_get_syscall_filter_mask_size) {
+		macho_read_at_vmaddr(textSec->macho, resolved, sizeof(resolved), &resolved);
+	}
+	return resolved;
+}
+
+uint64_t xpf_find_nsysent(void)
+{
+	uint64_t proc_get_syscall_filter_mask_size = xpf_item_resolve("kernelSymbol.proc_get_syscall_filter_mask_size");
+
+	uint32_t movAnyInst = 0, movAnyMask = 0;
+	arm64_gen_mov_imm('z', ARM64_REG_ANY, OPT_UINT64_NONE, OPT_UINT64_NONE, &movAnyInst, &movAnyMask);
+	uint64_t mov1Addr = pfsec_find_next_inst(gXPF.kernelTextSection, proc_get_syscall_filter_mask_size, 20, movAnyInst, movAnyMask);
+	uint64_t mov2Addr = pfsec_find_next_inst(gXPF.kernelTextSection, mov1Addr+4, 10, movAnyInst, movAnyMask);
+
+	uint64_t imm = 0;
+	arm64_dec_mov_imm(pfsec_read32(gXPF.kernelTextSection, mov2Addr), NULL, &imm, NULL, NULL);
+	return imm;
+}
+
+uint64_t xpf_find_mach_trap_count(void)
+{
+	uint64_t proc_get_syscall_filter_mask_size = xpf_item_resolve("kernelSymbol.proc_get_syscall_filter_mask_size");
+
+	uint32_t movAnyInst = 0, movAnyMask = 0;
+	arm64_gen_mov_imm('z', ARM64_REG_ANY, OPT_UINT64_NONE, OPT_UINT64_NONE, &movAnyInst, &movAnyMask);
+	uint64_t movAddr = pfsec_find_next_inst(gXPF.kernelTextSection, proc_get_syscall_filter_mask_size, 20, movAnyInst, movAnyMask);
+
+	uint64_t imm = 0;
+	arm64_dec_mov_imm(pfsec_read32(gXPF.kernelTextSection, movAddr), NULL, &imm, NULL, NULL);
+	return imm;
+}
+
+uint64_t xpf_find_mach_kobj_count(void)
+{
+	uint64_t proc_get_syscall_filter_mask_size = xpf_item_resolve("kernelSymbol.proc_get_syscall_filter_mask_size");
+
+	uint32_t ldrswInst = 0, ldrswMask = 0;
+	arm64_gen_ldrs_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrswInst, &ldrswMask);
+	uint64_t ldrswAddr = pfsec_find_next_inst(gXPF.kernelTextSection, proc_get_syscall_filter_mask_size, 40, ldrswInst, ldrswMask);
+	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrswAddr);
+}
+
 void xpf_common_init(void)
 {
 	xpf_item_register("kernelSymbol.start_first_cpu", xpf_find_start_first_cpu, NULL);
@@ -739,4 +815,9 @@ void xpf_common_init(void)
 
 	xpf_item_register("kernelSymbol.proc_apply_sandbox", xpf_find_proc_apply_sandbox, NULL);
 	xpf_item_register("kernelSymbol.mac_label_set", xpf_find_mac_label_set, NULL);
+
+	xpf_item_register("kernelSymbol.proc_get_syscall_filter_mask_size", xpf_find_proc_get_syscall_filter_mask_size, NULL);
+	xpf_item_register("kernelConstant.nsysent", xpf_find_nsysent, NULL);
+	xpf_item_register("kernelConstant.mach_trap_count", xpf_find_mach_trap_count, NULL);
+	xpf_item_register("kernelSymbol.mach_kobj_count", xpf_find_mach_kobj_count, NULL);
 }
