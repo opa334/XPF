@@ -704,8 +704,7 @@ uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 		stringSec = gXPF.kernelPrelinkTextSection;
 	}
 
-	//PFStringMetric *stringMetric = pfmetric_string_init("\"invalid # of syscalls from xnu\" @%s:%d");
-	PFStringMetric *stringMetric = pfmetric_string_init("sandbox.syscallmasks");
+	PFStringMetric *stringMetric = pfmetric_string_init("\"invalid # of syscalls from xnu\" @%s:%d");
 	__block uint64_t syscallMasksStringAddr = 0;
 	pfmetric_run(stringSec, stringMetric, ^(uint64_t vmaddr, bool *stop) {
 		syscallMasksStringAddr = vmaddr;
@@ -714,16 +713,28 @@ uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 	pfmetric_free(stringMetric);
 
 	PFXrefMetric *stringXrefMetric = pfmetric_xref_init(syscallMasksStringAddr, XREF_TYPE_MASK_REFERENCE);
-	__block uint64_t syscalllMasksRefAddr = 0;
+	__block uint64_t invalidSyscallLogRefAddr = 0;
 	pfmetric_run(textSec, stringXrefMetric, ^(uint64_t vmaddr, bool *stop) {
-		syscalllMasksRefAddr = vmaddr;
+		invalidSyscallLogRefAddr = vmaddr;
 		*stop = true;
 	});
 	pfmetric_free(stringXrefMetric);
 
+	uint32_t adrpAnyInst = 0, adrpAnyMask = 0;
+	arm64_gen_adr_p(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_REG_ANY, &adrpAnyInst, &adrpAnyMask);
+	uint64_t prevAdrpAddr = pfsec_find_prev_inst(textSec, invalidSyscallLogRefAddr-8, 20, adrpAnyInst, adrpAnyMask);
+
+	PFXrefMetric *logBranchXrefMetric = pfmetric_xref_init(prevAdrpAddr, XREF_TYPE_MASK_JUMP);
+	__block uint64_t logBranchXrefAddr = 0;
+	pfmetric_run(textSec, logBranchXrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		logBranchXrefAddr = vmaddr;
+		*stop = false;
+	});
+	pfmetric_free(logBranchXrefMetric);
+
 	uint32_t blAnyInst = 0, blAnyMask = 0;
 	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAnyInst, &blAnyMask);
-	uint64_t blAddr = pfsec_find_prev_inst(textSec, syscalllMasksRefAddr, 100, blAnyInst, blAnyMask);
+	uint64_t blAddr = pfsec_find_prev_inst(textSec, logBranchXrefAddr, 100, blAnyInst, blAnyMask);
 	uint64_t proc_get_syscall_filter_mask_size = 0;
 	arm64_dec_b_l(pfsec_read32(textSec, blAddr), blAddr, &proc_get_syscall_filter_mask_size, NULL);
 
