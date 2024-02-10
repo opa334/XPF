@@ -710,6 +710,19 @@ uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 		syscallMasksStringAddr = vmaddr;
 		*stop = true;
 	});
+
+	if (!syscallMasksStringAddr && gXPF.kernelStringSection && !gXPF.kernelSandboxStringSection) {
+		// On A11 15.x it is in kernelStringSection, on A10 and A9 it is not, on 16.x it is not
+		pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
+			syscallMasksStringAddr = vmaddr;
+			*stop = true;
+		});
+		if (syscallMasksStringAddr) {
+			textSec = gXPF.kernelTextSection;
+			stringSec = gXPF.kernelStringSection;
+		}
+	}
+
 	pfmetric_free(stringMetric);
 
 	PFXrefMetric *stringXrefMetric = pfmetric_xref_init(syscallMasksStringAddr, XREF_TYPE_MASK_REFERENCE);
