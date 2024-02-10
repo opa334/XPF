@@ -367,14 +367,15 @@ uint64_t xpf_find_sysent(void)
 void xpf_item_register(const char *name, void *finder, void *ctx)
 {
 	XPFItem *newItem = malloc(sizeof(XPFItem));
+	memset(newItem, 0x0, sizeof(XPFItem));
 	newItem->name = name;
 	newItem->ctx = ctx;
 	newItem->finder = finder;
 	newItem->cache = 0;
 	newItem->cached = false;
 
-	XPFItem *lastItem = gXPF.firstItem;
-	XPFItem *item = lastItem;
+	XPFItem *lastItem = NULL;
+	XPFItem *item = gXPF.firstItem;
 	while (item) {
 		lastItem = item;
 		item = item->nextItem;
