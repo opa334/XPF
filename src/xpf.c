@@ -359,11 +359,6 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 	return 0;
 }
 
-uint64_t xpf_find_sysent(void)
-{
-	return 0;
-}
-
 void xpf_item_register(const char *name, void *finder, void *ctx)
 {
 	XPFItem *newItem = malloc(sizeof(XPFItem));
