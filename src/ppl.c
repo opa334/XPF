@@ -209,22 +209,28 @@ uint64_t xpf_find_pmap_pin_kernel_pages_reference(uint32_t idx)
 uint64_t xpf_find_tte_get_ptd(void)
 {
 	PFStringMetric *stringMetric = pfmetric_string_init("tte_get_ptd");
-	__block uint64_t ptte_get_ptd_stringAddr = 0;
+	__block uint64_t tte_get_ptd_stringAddr = 0;
 	pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop){
-		ptte_get_ptd_stringAddr = vmaddr;
+		tte_get_ptd_stringAddr = vmaddr;
 		*stop = true;
 	});
 	pfmetric_free(stringMetric);
 
-	uint32_t ret = gXPF.kernelIsArm64e ? 0xd65f0fff : 0xd65f03c0;
+	if (!tte_get_ptd_stringAddr) {
+		// iOS 15.0.x don't have the "tte_get_ptd" string
+		stringMetric = pfmetric_string_init("%s: Passed in pmap doesn't own the page table to be deleted ptd=%p ptd->pmap=%p pmap=%p @%s:%d");
+		pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop){
+			tte_get_ptd_stringAddr = vmaddr;
+			*stop = true;
+		});
+		pfmetric_free(stringMetric);
+	}
 
-	PFXrefMetric *xrefMetric = pfmetric_xref_init(ptte_get_ptd_stringAddr, XREF_TYPE_MASK_REFERENCE);
+	PFXrefMetric *xrefMetric = pfmetric_xref_init(tte_get_ptd_stringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t tte_get_ptd = 0;
 	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
-		if (pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 10, ret, 0xffffffff)) {
-			tte_get_ptd = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
-			*stop = true;
-		}
+		tte_get_ptd = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
+		*stop = true;
 	});
 	pfmetric_free(xrefMetric);
 
@@ -238,8 +244,14 @@ uint64_t xpf_find_pv_head_table(void)
 	uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
 	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
 
-	uint64_t ref1 = pfsec_find_next_inst(gXPF.kernelTextSection, tte_get_ptd, 0, ldrAnyInst, ldrAnyMask);
-	uint64_t ref2 = pfsec_find_next_inst(gXPF.kernelTextSection, ref1+4, 0, ldrAnyInst, ldrAnyMask);
+	uint64_t imm = 0;
+	uint64_t ref1 = tte_get_ptd;
+	while (imm == 0) {
+		ref1 = pfsec_find_next_inst(gXPF.kernelTextSection, ref1, 0, ldrAnyInst, ldrAnyMask);
+		arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, ref1), NULL, NULL, &imm, NULL, NULL);
+		ref1 += 4;
+	}
+	uint64_t ref2 = pfsec_find_next_inst(gXPF.kernelTextSection, ref1, 0, ldrAnyInst, ldrAnyMask);
 
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ref2);
 }
