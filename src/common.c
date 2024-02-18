@@ -705,6 +705,12 @@ uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 	}
 
 	PFStringMetric *stringMetric = pfmetric_string_init("\"invalid # of syscalls from xnu\" @%s:%d");
+	if (strcmp(gXPF.xnuBuild, "7938.0.0.112.1~5") == 0 || // iOS 15.0b1
+		strcmp(gXPF.xnuBuild, "8011.0.0.122.3~2") == 0 || // iOS 15.0b2
+		strcmp(gXPF.xnuBuild, "8019.0.46.0.4~7") == 0) {  // iOS 15.0b3
+		stringMetric = pfmetric_string_init("\"invalid # of syscalls from xnu!\" @%s:%d");
+	}
+
 	__block uint64_t syscallMasksStringAddr = 0;
 	pfmetric_run(stringSec, stringMetric, ^(uint64_t vmaddr, bool *stop) {
 		syscallMasksStringAddr = vmaddr;
