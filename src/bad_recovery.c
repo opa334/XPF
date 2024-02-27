@@ -266,13 +266,14 @@ uint64_t xpf_find_thread_machine_kstackptr(void)
 	uint32_t inst[3] = {
 		0xd538d08a, // mrs x10, tpidr_el1
 		ldrAnyInst, // ldr x?, [x?, TH_KSTACKPTR]
-		0xd503233f, // hint #0x19
+		0xd503233f, // paciasp
 	};
 	uint32_t mask[3] = {
 		0xffffffff,
 		ldrAnyMask,
 		0xffffffff,
 	};
+
 
 	__block uint64_t machine_kstackptr = 0;
 	PFPatternMetric *patternMetric = pfmetric_pattern_init(inst, mask, sizeof(inst), sizeof(uint32_t));
@@ -281,6 +282,30 @@ uint64_t xpf_find_thread_machine_kstackptr(void)
 		*stop = true;
 	});
 	pfmetric_free(patternMetric);
+
+	if (!machine_kstackptr) {
+		uint32_t inst2[] = {
+			0xd538d08a, // mrs x10, tpidr_el1
+			ldrAnyInst, // ldr x?, [x?, TH_KSTACKPTR]
+		};
+		uint32_t mask2[] = {
+			0xffffffff,
+			ldrAnyMask,
+		};
+
+		uint32_t movk_w12_0x4Inst = 0, movk_w12_0x4Mask = 0;
+		arm64_gen_mov_imm('k', ARM64_REG_W(12), OPT_UINT64(0x4), OPT_UINT64(0), &movk_w12_0x4Inst, &movk_w12_0x4Mask);
+
+		PFPatternMetric *patternMetric2 = pfmetric_pattern_init(inst2, mask2, sizeof(inst2), sizeof(uint32_t));
+		pfmetric_run(gXPF.kernelTextSection, patternMetric2, ^(uint64_t vmaddr, bool *stop) {
+			if (pfsec_find_next_inst(gXPF.kernelTextSection, vmaddr, 0x10, movk_w12_0x4Inst, movk_w12_0x4Mask)) {
+				arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, vmaddr + 4), NULL, NULL, &machine_kstackptr, NULL, NULL);
+				*stop = true;
+			}
+		});
+		pfmetric_free(patternMetric2);
+	}
+
 	return machine_kstackptr;
 }
 
