@@ -22,12 +22,13 @@ int main(int argc, char *argv[]) {
 				"physmap",
 				"struct",
 				"physrw",
+				"perfkrw",
 				NULL,
 				NULL,
 				NULL,
 			};
 
-			uint32_t idx = 6;
+			uint32_t idx = 7;
 			if (xpf_set_is_supported("devmode")) {
 				sets[idx++] = "devmode"; 
 			}
