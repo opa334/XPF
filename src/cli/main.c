@@ -18,6 +18,7 @@ int main(int argc, char *argv[]) {
 			char *sets[] = {
 				"translation",
 				"trustcache",
+				"sandbox",
 				"physmap",
 				"struct",
 				"physrw",
@@ -26,7 +27,7 @@ int main(int argc, char *argv[]) {
 				NULL,
 			};
 
-			uint32_t idx = 5;
+			uint32_t idx = 6;
 			if (xpf_set_is_supported("devmode")) {
 				sets[idx++] = "devmode"; 
 			}
