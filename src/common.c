@@ -857,7 +857,6 @@ uint64_t xpf_find_developer_mode_enabled(void)
 	uint32_t ldrLitAnyInst = 0, ldrLitAnyMask = 0;
 	arm64_gen_ldr_lit(ARM64_REG_ANY, OPT_UINT64_NONE, OPT_UINT64_NONE, &ldrLitAnyInst, &ldrLitAnyMask);
 
-	printf("afterRefAddr: %llx\n", afterRefAddr);
 	uint64_t refAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, afterRefAddr, 25, ldrLitAnyInst, ldrLitAnyMask);
 	if (refAddr) {
 		uint64_t target = 0;
