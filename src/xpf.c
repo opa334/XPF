@@ -157,6 +157,15 @@ XPFSet gPerfKRWSet = {
 	},
 };
 
+XPFSet gDevModeSet = {
+	.name="devmode",
+	.supported=xpf_supported_16up,
+	.metrics={
+		"kernelSymbol.developer_mode_enabled",
+		NULL
+	},
+};
+
 XPFSet *gSets[] = {
 	&gBaseSet,
 	&gTranslationSet,
@@ -168,6 +177,7 @@ XPFSet *gSets[] = {
 	&gBadRecoverySet,
 	&gPhysRWSet,
 	&gPerfKRWSet,
+	&gDevModeSet,
 };
 
 XPF gXPF = { 0 };

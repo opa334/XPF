@@ -13,17 +13,28 @@ int main(int argc, char *argv[]) {
 
 			printf("Kernel base: 0x%llx\n", gXPF.kernelBase);
 			printf("Kernel entry: 0x%llx\n", gXPF.kernelEntry);
-			xpf_print_all_items();
+			//xpf_print_all_items();
 
-			/*xpc_object_t serializedSystemInfo = xpf_construct_offset_dictionary((const char* []) {
+			char *sets[] = {
 				"translation",
 				"trustcache",
 				"physmap",
 				"struct",
 				"physrw",
-				"badRecovery",
-				NULL
-			});
+				NULL,
+				NULL,
+				NULL,
+			};
+
+			uint32_t idx = 5;
+			if (xpf_set_is_supported("devmode")) {
+				sets[idx++] = "devmode"; 
+			}
+			if (xpf_set_is_supported("badRecovery")) {
+				sets[idx++] = "badRecovery"; 
+			}
+
+			xpc_object_t serializedSystemInfo = xpf_construct_offset_dictionary((const char **)sets);
 			if (serializedSystemInfo) {
 				xpc_dictionary_apply(serializedSystemInfo, ^bool(const char *key, xpc_object_t value) {
 					if (xpc_get_type(value) == XPC_TYPE_UINT64) {
@@ -35,7 +46,7 @@ int main(int argc, char *argv[]) {
 			}
 			else {
 				printf("XPF Error: %s\n", xpf_get_error());
-			}*/
+			}
 
 			t = clock() - t;
 			double time_taken = ((double)t)/CLOCKS_PER_SEC;

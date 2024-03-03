@@ -98,12 +98,12 @@ uint64_t xpf_find_pmap_image4_trust_caches(void)
 	uint64_t pmap_lookup_in_loaded_trust_caches_internal = xpf_item_resolve("kernelSymbol.pmap_lookup_in_loaded_trust_caches_internal");
 
 	uint32_t ldrLitAny = 0, ldrLitAnyMask = 0;
-	arm64_gen_ldr_lit(ARM64_REG_ANY, OPT_UINT64_NONE, &ldrLitAny, &ldrLitAnyMask);
+	arm64_gen_ldr_lit(ARM64_REG_ANY, OPT_UINT64_NONE, OPT_UINT64_NONE, &ldrLitAny, &ldrLitAnyMask);
 	uint64_t ldrLitAddr = pfsec_find_next_inst(gXPF.kernelPPLTextSection, pmap_lookup_in_loaded_trust_caches_internal, 20, ldrLitAny, ldrLitAnyMask);
 	if (ldrLitAddr) {
-		int64_t ldrTarget = 0;
-		arm64_dec_ldr_lit(pfsec_read32(gXPF.kernelPPLTextSection, ldrLitAddr), NULL, &ldrTarget);
-		return ldrLitAddr + ldrTarget;
+		uint64_t ldrTarget = 0;
+		arm64_dec_ldr_lit(pfsec_read32(gXPF.kernelPPLTextSection, ldrLitAddr), ldrLitAddr, &ldrTarget, NULL);
+		return ldrTarget;
 	}
 
 	/*uint32_t ldrAny = 0, ldrAnyMask = 0;

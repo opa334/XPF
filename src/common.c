@@ -807,6 +807,67 @@ uint64_t xpf_find_mach_kobj_count(void)
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrswAddr);
 }
 
+uint64_t xpf_find_developer_mode_enabled(void)
+{
+	PFStringMetric *stringMetric = pfmetric_string_init("Just like pineapple on pizza, this task/thread port doesn't belong here. @%s:%d");
+	__block uint64_t stringAddr = 0;
+	pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop){
+		stringAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(stringMetric);
+
+	PFXrefMetric *stringXrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
+	__block uint64_t stringXrefAddr = 0;
+	pfmetric_run(gXPF.kernelTextSection, stringXrefMetric, ^(uint64_t vmaddr, bool *stop){
+		stringXrefAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(stringXrefMetric);
+
+	uint32_t adrpAnyInst = 0, adrpAnyMask = 0;
+	arm64_gen_adr_p(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_REG_ANY, &adrpAnyInst, &adrpAnyMask);
+	uint64_t branchTarget = pfsec_find_prev_inst(gXPF.kernelTextSection, stringXrefAddr - 4, 20, adrpAnyInst, adrpAnyMask);
+
+	PFXrefMetric *branchXrefMetric = pfmetric_xref_init(branchTarget, XREF_TYPE_MASK_JUMP);
+	__block uint64_t branchTarget2 = 0;
+	pfmetric_run(gXPF.kernelTextSection, branchXrefMetric, ^(uint64_t vmaddr, bool *stop){
+		branchTarget2 = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(branchXrefMetric);
+
+	__block uint64_t afterRefAddr = 0;
+	if (branchTarget2) {
+		PFXrefMetric *branchXrefMetric2 = pfmetric_xref_init(branchTarget2, XREF_TYPE_MASK_JUMP);
+		
+		pfmetric_run(gXPF.kernelTextSection, branchXrefMetric2, ^(uint64_t vmaddr, bool *stop){
+			afterRefAddr = vmaddr;
+			*stop = true;
+		});
+		pfmetric_free(branchXrefMetric2);
+		if (!afterRefAddr) {
+			afterRefAddr = branchTarget2;
+		}
+	}
+	else {
+		afterRefAddr = branchTarget;
+	}
+
+	uint32_t ldrLitAnyInst = 0, ldrLitAnyMask = 0;
+	arm64_gen_ldr_lit(ARM64_REG_ANY, OPT_UINT64_NONE, OPT_UINT64_NONE, &ldrLitAnyInst, &ldrLitAnyMask);
+
+	printf("afterRefAddr: %llx\n", afterRefAddr);
+	uint64_t refAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, afterRefAddr, 25, ldrLitAnyInst, ldrLitAnyMask);
+	if (refAddr) {
+		uint64_t target = 0;
+		arm64_dec_ldr_lit(pfsec_read32(gXPF.kernelTextSection, refAddr), refAddr, &target, NULL);
+		return target;
+	}
+	refAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, afterRefAddr, 50, adrpAnyInst, adrpAnyMask);
+	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, refAddr + 4);
+}
+
 void xpf_common_init(void)
 {
 	xpf_item_register("kernelSymbol.start_first_cpu", xpf_find_start_first_cpu, NULL);
@@ -856,4 +917,6 @@ void xpf_common_init(void)
 	xpf_item_register("kernelConstant.nsysent", xpf_find_nsysent, NULL);
 	xpf_item_register("kernelConstant.mach_trap_count", xpf_find_mach_trap_count, NULL);
 	xpf_item_register("kernelSymbol.mach_kobj_count", xpf_find_mach_kobj_count, NULL);
+
+	xpf_item_register("kernelSymbol.developer_mode_enabled", xpf_find_developer_mode_enabled, NULL);
 }
