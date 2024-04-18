@@ -256,6 +256,45 @@ static uint64_t xpf_find_pv_head_table(void)
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ref2);
 }
 
+static uint64_t xpf_find_pmap_enter_options_addr(void)
+{
+	uint64_t pmap_enter_options_ppl = xpf_item_resolve("kernelSymbol.pmap_enter_options_ppl");
+
+	__block uint64_t pmap_enter_options_addr = 0;
+
+	PFXrefMetric *xrefMetric = pfmetric_xref_init(pmap_enter_options_ppl, XREF_TYPE_MASK_CALL);
+	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		// Find an Xref, that within the the next 20 instructions...
+		if (pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 20, 0x12000000, 0x7F800000) && // Has an AND
+			pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 20, 0x32000000, 0x7F800000) && // Has an ORR
+		   !pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 20, 0x53000000, 0x7F800000)) { // Has no LSL
+			pmap_enter_options_addr = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
+			*stop = true;
+		}
+	});
+	pfmetric_free(xrefMetric);
+
+	return pmap_enter_options_addr;
+}
+
+static uint64_t xpf_find_pmap_remove_options(void)
+{
+    uint64_t pmap_remove_options_ppl = xpf_item_resolve("kernelSymbol.pmap_remove_options_ppl");
+
+	__block uint64_t pmap_remove_options = 0;
+
+	PFXrefMetric *xrefMetric = pfmetric_xref_init(pmap_remove_options_ppl, XREF_TYPE_MASK_CALL);
+	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		if (pfsec_read32(gXPF.kernelTextSection, vmaddr - 4) != 0x52802003) {
+			pmap_remove_options = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
+			*stop = true;
+		}
+	});
+	pfmetric_free(xrefMetric);
+
+	return pmap_remove_options;
+}
+
 void xpf_ppl_init(void)
 {
 	if (gXPF.kernelIsArm64e) {
@@ -265,9 +304,13 @@ void xpf_ppl_init(void)
 		xpf_item_register("kernelSymbol.ppl_handler_table", xpf_find_ppl_handler_table, NULL);
 		xpf_item_register("kernelSymbol.pmap_enter_options_internal", xpf_find_ppl_routine, (void *)(uint32_t)10);
 		xpf_item_register("kernelSymbol.pmap_enter_options_ppl", xpf_find_ppl_dispatch_func, (void *)(uint32_t)10);
+		xpf_item_register("kernelSymbol.pmap_remove_options_ppl", xpf_find_ppl_dispatch_func, (void *)(uint32_t)23);
 		xpf_item_register("kernelSymbol.pmap_lookup_in_loaded_trust_caches_internal", xpf_find_ppl_routine, (void *)(uint32_t)41);
 		xpf_item_register("kernelSymbol.pmap_pin_kernel_pages", xpf_find_pmap_pin_kernel_pages, NULL);
 		xpf_item_register("kernelSymbol.tte_get_ptd", xpf_find_tte_get_ptd, NULL);
+
+		xpf_item_register("kernelSymbol.pmap_enter_options_addr", xpf_find_pmap_enter_options_addr, NULL);
+		xpf_item_register("kernelSymbol.pmap_remove_options", xpf_find_pmap_remove_options, NULL);
 
 		xpf_item_register("kernelSymbol.vm_first_phys", xpf_find_pmap_pin_kernel_pages_reference, (void *)(uint32_t)0);
 		xpf_item_register("kernelSymbol.vm_last_phys", xpf_find_pmap_pin_kernel_pages_reference, (void *)(uint32_t)1);

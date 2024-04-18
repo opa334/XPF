@@ -74,6 +74,8 @@ XPFSet gPhysmapSet = {
 		"kernelSymbol.pv_head_table",
 		"kernelSymbol.ptov_table",
 		"kernelConstant.PT_INDEX_MAX",
+		"kernelSymbol.pmap_enter_options_addr",
+		"kernelSymbol.pmap_remove_options",
 		NULL
 	}
 };

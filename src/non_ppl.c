@@ -124,6 +124,52 @@ static uint64_t xpf_find_pmap_tt_deallocate_reference(uint32_t n)
     return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, adrpAddr + 4);
 }
 
+static uint64_t xpf_find_pmap_enter_options_addr(void)
+{
+	__block uint64_t stringAddr = 0;
+
+	PFStringMetric *stringMetric = pfmetric_string_init("pmap_enter_options_internal");
+	pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
+		stringAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(stringMetric);
+
+	__block uint64_t pmap_enter_options_internal = 0;
+	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
+	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		pmap_enter_options_internal = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
+		*stop = true;
+	});
+	pfmetric_free(xrefMetric);
+
+	// On arm64, pmap_enter_options_internal is equivalent to pmap_enter_options_addr
+	return pmap_enter_options_internal;
+}
+
+static uint64_t xpf_find_pmap_remove_options(void)
+{
+    __block uint64_t stringAddr = 0;
+
+	PFStringMetric *stringMetric = pfmetric_string_init("pmap_remove_options_internal");
+	pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
+		stringAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(stringMetric);
+
+	__block uint64_t pmap_remove_options_internal = 0;
+	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
+	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		pmap_remove_options_internal = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
+		*stop = true;
+	});
+	pfmetric_free(xrefMetric);
+
+	// On arm64, pmap_remove_options_internal is equivalent to pmap_remove_options
+	return pmap_remove_options_internal;
+}
+
 // TODO
 static uint64_t xpf_find_vm_last_phys(void)
 {
@@ -145,6 +191,9 @@ void xpf_non_ppl_init(void)
         xpf_item_register("kernelSymbol.vm_last_phys", xpf_find_vm_last_phys, NULL);
         xpf_item_register("kernelSymbol.pp_attr_table", xpf_find_pp_attr_table, NULL);
         
+		xpf_item_register("kernelSymbol.pmap_enter_options_addr", xpf_find_pmap_enter_options_addr, NULL);
+		xpf_item_register("kernelSymbol.pmap_remove_options", xpf_find_pmap_remove_options, NULL);
+
         if (strcmp(gXPF.darwinVersion, "22.0.0") >= 0) {
             // iOS >=16
             xpf_item_register("kernelSymbol.ppl_trust_cache_rt", xpf_find_trust_cache_rt, NULL);
