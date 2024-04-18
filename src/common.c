@@ -762,12 +762,8 @@ uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 	uint64_t blAddr = pfsec_find_prev_inst(textSec, logBranchXrefAddr, 100, blAnyInst, blAnyMask);
 	uint64_t proc_get_syscall_filter_mask_size = 0;
 	arm64_dec_b_l(pfsec_read32(textSec, blAddr), blAddr, &proc_get_syscall_filter_mask_size, NULL);
-
-	uint64_t resolved = pfsec_arm64_resolve_stub(textSec, proc_get_syscall_filter_mask_size);
-	if (resolved != proc_get_syscall_filter_mask_size) {
-		macho_read_at_vmaddr(textSec->macho, resolved, sizeof(resolved), &resolved);
-	}
-	return resolved;
+	
+	return pfsec_arm64_resolve_stub(textSec, proc_get_syscall_filter_mask_size);
 }
 
 uint64_t xpf_find_nsysent(void)
