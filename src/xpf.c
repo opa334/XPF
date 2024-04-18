@@ -28,6 +28,11 @@ bool xpf_supported_16up(void)
 	return strcmp(gXPF.darwinVersion, "22.0.0") >= 0;
 }
 
+bool xpf_supported_arm64(void)
+{
+	return !gXPF.kernelIsArm64e;
+}
+
 XPFSet gBaseSet = {
 	.name="base",
 	.supported=xpf_supported_always,
@@ -166,6 +171,17 @@ XPFSet gDevModeSet = {
 	},
 };
 
+XPFSet gArm64KcallSet = {
+	.name="arm64kcall",
+	.supported=xpf_supported_arm64,
+	.metrics={
+		"kernelSymbol.exception_return",
+		"kernelGadget.kcall_return",
+		"kernelGadget.str_x8_x0",
+		NULL
+	},
+};
+
 XPFSet *gSets[] = {
 	&gBaseSet,
 	&gTranslationSet,
@@ -178,6 +194,7 @@ XPFSet *gSets[] = {
 	&gPhysRWSet,
 	&gPerfKRWSet,
 	&gDevModeSet,
+	&gArm64KcallSet,
 };
 
 XPF gXPF = { 0 };

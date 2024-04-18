@@ -26,6 +26,7 @@ int main(int argc, char *argv[]) {
 				NULL,
 				NULL,
 				NULL,
+				NULL,
 			};
 
 			uint32_t idx = 7;
@@ -34,6 +35,9 @@ int main(int argc, char *argv[]) {
 			}
 			if (xpf_set_is_supported("badRecovery")) {
 				sets[idx++] = "badRecovery"; 
+			}
+			if (xpf_set_is_supported("arm64kcall")) {
+				sets[idx++] = "arm64kcall"; 
 			}
 
 			xpc_object_t serializedSystemInfo = xpf_construct_offset_dictionary((const char **)sets);

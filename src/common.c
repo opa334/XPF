@@ -867,6 +867,60 @@ uint64_t xpf_find_developer_mode_enabled(void)
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, refAddr + 4);
 }
 
+uint64_t xpf_find_str_x8_x0_gadget(void)
+{
+	uint32_t inst[] = (uint32_t[]){
+		0x00000000, // str x8, [x0]
+		0xd65f03c0  // ret
+	};
+	arm64_gen_str_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_X(8), ARM64_REG_X(0), OPT_UINT64(0), &inst[0], NULL);
+
+	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
+	__block uint64_t str_x8_x0_gadget = 0;
+	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop) {
+		str_x8_x0_gadget = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(metric);
+	return str_x8_x0_gadget;
+}
+
+uint64_t xpf_find_exception_return(void)
+{
+	uint32_t inst[] = (uint32_t[]){
+		0xd5034fdf, // msr daifset, #0xf
+		0xd538d083, // mrs x3, tpidr_el1
+		0x910002bf  // mov sp, x21
+	};
+
+	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
+	__block uint64_t exception_return = 0;
+	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop){
+		exception_return = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(metric);
+	return exception_return;
+}
+
+uint64_t xpf_find_kcall_return(void)
+{
+	uint32_t inst[] = (uint32_t[]){
+		0xf9000260, // str x0, [x19]
+		0xa9417bfd, // ldp x29, x30, [sp, #0x10]
+		0xa8c24ff4, // ldp x20, x19, [sp], #0x20
+		0xd65f03c0, // ret
+	};
+
+	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
+	__block uint64_t kcall_return = 0;
+	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop){
+		kcall_return = vmaddr;
+		*stop = true;
+	});
+	return kcall_return;
+}
+
 void xpf_common_init(void)
 {
 	xpf_item_register("kernelSymbol.start_first_cpu", xpf_find_start_first_cpu, NULL);
@@ -918,4 +972,8 @@ void xpf_common_init(void)
 	xpf_item_register("kernelSymbol.mach_kobj_count", xpf_find_mach_kobj_count, NULL);
 
 	xpf_item_register("kernelSymbol.developer_mode_enabled", xpf_find_developer_mode_enabled, NULL);
+
+	xpf_item_register("kernelGadget.str_x8_x0", xpf_find_str_x8_x0_gadget, NULL);
+	xpf_item_register("kernelSymbol.exception_return", xpf_find_exception_return, NULL);
+	xpf_item_register("kernelGadget.kcall_return", xpf_find_kcall_return, NULL);
 }

@@ -92,24 +92,6 @@ uint64_t xpf_find_br_x22_gadget(void)
 	return brX22Gadget;
 }
 
-uint64_t xpf_find_exception_return(void)
-{
-	uint32_t inst[] = (uint32_t[]){
-		0xd5034fdf, // msr daifset, #0xf
-		0xd538d083, // mrs x3, tpidr_el1
-		0x910002bf  // mov sp, x21
-	};
-
-	PFPatternMetric *metric = pfmetric_pattern_init(inst, NULL, sizeof(inst), sizeof(uint32_t));
-	__block uint64_t exception_return = 0;
-	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop){
-		exception_return = vmaddr;
-		*stop = true;
-	});
-	pfmetric_free(metric);
-	return exception_return;
-}
-
 uint64_t xpf_find_exception_return_after_check(void)
 {
 	uint64_t exception_return = xpf_item_resolve("kernelSymbol.exception_return");
@@ -274,7 +256,6 @@ uint64_t xpf_find_thread_machine_kstackptr(void)
 		0xffffffff,
 	};
 
-
 	__block uint64_t machine_kstackptr = 0;
 	PFPatternMetric *patternMetric = pfmetric_pattern_init(inst, mask, sizeof(inst), sizeof(uint32_t));
 	pfmetric_run(gXPF.kernelTextSection, patternMetric, ^(uint64_t vmaddr, bool *stop) {
@@ -365,7 +346,6 @@ void xpf_bad_recovery_init(void)
 		xpf_item_register("kernelSymbol.hw_lck_ticket_reserve_orig_allow_invalid", xpf_find_hw_lck_ticket_reserve_orig_allow_invalid, NULL);
 		xpf_item_register("kernelGadget.hw_lck_ticket_reserve_orig_allow_invalid_signed", xpf_find_hw_lck_ticket_reserve_orig_allow_invalid_signed, NULL);
 		xpf_item_register("kernelGadget.br_x22", xpf_find_br_x22_gadget, NULL);
-		xpf_item_register("kernelSymbol.exception_return", xpf_find_exception_return, NULL);
 		xpf_item_register("kernelGadget.exception_return_after_check", xpf_find_exception_return_after_check, NULL);
 		xpf_item_register("kernelGadget.exception_return_after_check_no_restore", xpf_find_exception_return_after_check_no_restore, NULL);
 		xpf_item_register("kernelGadget.ldp_x0_x1_x8", xpf_find_ldp_x0_x1_x8_gadget, NULL);
