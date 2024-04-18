@@ -1,6 +1,6 @@
 #include "xpf.h"
 
-uint64_t xpf_find_non_ppl_pmap_image4_trust_caches(void)
+static uint64_t xpf_find_pmap_image4_trust_caches(void)
 {
     // search pmap_is_trust_cache_loaded
     uint32_t inst[] = {
@@ -44,7 +44,7 @@ uint64_t xpf_find_non_ppl_pmap_image4_trust_caches(void)
     return 0;
 }
 
-uint64_t xpf_find_non_ppl_trust_cache_rt(void)
+static uint64_t xpf_find_trust_cache_rt(void)
 {
     PFStringMetric *stringMetric = pfmetric_string_init("unexpected size for TrustCache property: %u != %zu @%s:%d");
     __block uint64_t non_ppl_trust_cache_rt_stringAddr = 0;
@@ -76,7 +76,7 @@ uint64_t xpf_find_non_ppl_trust_cache_rt(void)
     return xpfsec_read_ptr(gXPF.kernelDataConstSection, pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, adrpAddr + 4));
 }
 
-uint64_t xpf_find_non_ppl_pmap_tt_deallocate(void)
+static uint64_t xpf_find_pmap_tt_deallocate(void)
 {
     PFStringMetric *stringMetric = pfmetric_string_init("pmap_tt_deallocate(): ptdp %p, count %d @%s:%d");
     __block uint64_t pmap_tt_deallocate_stringAddr = 0;
@@ -97,7 +97,7 @@ uint64_t xpf_find_non_ppl_pmap_tt_deallocate(void)
     return pmap_tt_deallocate;
 }
 
-uint64_t xpf_find_non_ppl_pmap_tt_deallocate_reference(uint32_t n)
+static uint64_t xpf_find_pmap_tt_deallocate_reference(uint32_t n)
 {
     uint64_t pmap_tt_deallocate = xpf_item_resolve("kernelSymbol.pmap_tt_deallocate");
     
@@ -125,12 +125,12 @@ uint64_t xpf_find_non_ppl_pmap_tt_deallocate_reference(uint32_t n)
 }
 
 // TODO
-uint64_t xpf_find_non_ppl_vm_last_phys(void)
+static uint64_t xpf_find_vm_last_phys(void)
 {
     return 0xFFFFFF8000000000;
 }
 
-uint64_t xpf_find_non_ppl_pp_attr_table(void)
+static uint64_t xpf_find_pp_attr_table(void)
 {
     return 0xFFFFFF8000000000;
 }
@@ -138,20 +138,20 @@ uint64_t xpf_find_non_ppl_pp_attr_table(void)
 void xpf_non_ppl_init(void)
 {
     if (!gXPF.kernelIsArm64e) {
-        xpf_item_register("kernelSymbol.pmap_tt_deallocate", xpf_find_non_ppl_pmap_tt_deallocate, NULL);
-        xpf_item_register("kernelSymbol.vm_first_phys", xpf_find_non_ppl_pmap_tt_deallocate_reference, (void*)(uint32_t)1);
-        xpf_item_register("kernelSymbol.pv_head_table", xpf_find_non_ppl_pmap_tt_deallocate_reference, (void*)(uint32_t)2);
+        xpf_item_register("kernelSymbol.pmap_tt_deallocate", xpf_find_pmap_tt_deallocate, NULL);
+        xpf_item_register("kernelSymbol.vm_first_phys", xpf_find_pmap_tt_deallocate_reference, (void*)(uint32_t)1);
+        xpf_item_register("kernelSymbol.pv_head_table", xpf_find_pmap_tt_deallocate_reference, (void*)(uint32_t)2);
         
-        xpf_item_register("kernelSymbol.vm_last_phys", xpf_find_non_ppl_vm_last_phys, NULL);
-        xpf_item_register("kernelSymbol.pp_attr_table", xpf_find_non_ppl_pp_attr_table, NULL);
+        xpf_item_register("kernelSymbol.vm_last_phys", xpf_find_vm_last_phys, NULL);
+        xpf_item_register("kernelSymbol.pp_attr_table", xpf_find_pp_attr_table, NULL);
         
         if (strcmp(gXPF.darwinVersion, "22.0.0") >= 0) {
             // iOS >=16
-            xpf_item_register("kernelSymbol.ppl_trust_cache_rt", xpf_find_non_ppl_trust_cache_rt, NULL);
+            xpf_item_register("kernelSymbol.ppl_trust_cache_rt", xpf_find_trust_cache_rt, NULL);
         }
         else {
             // iOS <=15
-            xpf_item_register("kernelSymbol.pmap_image4_trust_caches", xpf_find_non_ppl_pmap_image4_trust_caches, NULL);
+            xpf_item_register("kernelSymbol.pmap_image4_trust_caches", xpf_find_pmap_image4_trust_caches, NULL);
         }
     }
 }

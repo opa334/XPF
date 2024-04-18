@@ -3,7 +3,7 @@
 #include <choma/arm64.h>
 #include <choma/PatchFinder.h>
 
-uint64_t xpf_find_ppl_dispatch_section(void)
+static uint64_t xpf_find_ppl_dispatch_section(void)
 {
 	uint32_t bAny = 0, bAnyMask = 0, movX15Any = 0, movX15AnyMask = 0;
 	arm64_gen_b_l(OPT_BOOL(false), OPT_UINT64_NONE, OPT_UINT64_NONE, &bAny, &bAnyMask);
@@ -32,7 +32,7 @@ uint64_t xpf_find_ppl_dispatch_section(void)
 	return ppl_dispatch_section;
 }
 
-uint64_t xpf_find_ppl_enter(void)
+static uint64_t xpf_find_ppl_enter(void)
 {
 	uint64_t ppl_dispatch_section = xpf_item_resolve("kernelSymbol.ppl_dispatch_section");
 	__block uint64_t ppl_enter = 0;
@@ -40,7 +40,7 @@ uint64_t xpf_find_ppl_enter(void)
 	return ppl_enter;
 }
 
-uint64_t xpf_find_ppl_bootstrap_dispatch(void)
+static uint64_t xpf_find_ppl_bootstrap_dispatch(void)
 {
 	uint64_t ppl_enter = xpf_item_resolve("kernelSymbol.ppl_enter");
 
@@ -66,7 +66,7 @@ uint64_t xpf_find_ppl_bootstrap_dispatch(void)
 	return 0;
 }
 
-uint64_t xpf_find_ppl_handler_table(void)
+static uint64_t xpf_find_ppl_handler_table(void)
 {
 	uint64_t ppl_bootstrap_dispatch = xpf_item_resolve("kernelSymbol.ppl_bootstrap_dispatch");
 
@@ -77,13 +77,13 @@ uint64_t xpf_find_ppl_handler_table(void)
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, addAddr);
 }
 
-uint64_t xpf_find_ppl_routine(uint32_t idx)
+static uint64_t xpf_find_ppl_routine(uint32_t idx)
 {
 	uint64_t ppl_handler_table = xpf_item_resolve("kernelSymbol.ppl_handler_table");
 	return xpfsec_read_ptr(gXPF.kernelDataConstSection, ppl_handler_table + (sizeof(uint64_t) * idx));
 }
 
-uint64_t xpf_find_ppl_dispatch_func(uint32_t idx)
+static uint64_t xpf_find_ppl_dispatch_func(uint32_t idx)
 {
 	uint64_t ppl_dispatch_section = xpf_item_resolve("kernelSymbol.ppl_dispatch_section");
 
@@ -93,7 +93,7 @@ uint64_t xpf_find_ppl_dispatch_func(uint32_t idx)
 	return pfsec_find_next_inst(gXPF.kernelTextSection, ppl_dispatch_section, 1000, movToFind, movMaskToFind);
 }
 
-uint64_t xpf_find_pmap_image4_trust_caches(void)
+static uint64_t xpf_find_pmap_image4_trust_caches(void)
 {
 	uint64_t pmap_lookup_in_loaded_trust_caches_internal = xpf_item_resolve("kernelSymbol.pmap_lookup_in_loaded_trust_caches_internal");
 
@@ -128,7 +128,7 @@ uint64_t xpf_find_pmap_image4_trust_caches(void)
 	return 0;
 }
 
-uint64_t xpf_find_pmap_query_trust_cache_safe(void)
+static uint64_t xpf_find_pmap_query_trust_cache_safe(void)
 {
 	uint64_t pmap_lookup_in_loaded_trust_caches_internal = xpf_item_resolve("kernelSymbol.pmap_lookup_in_loaded_trust_caches_internal");
 
@@ -143,7 +143,7 @@ uint64_t xpf_find_pmap_query_trust_cache_safe(void)
 	return pmap_query_trust_cache_safe;
 }
 
-uint64_t xpf_find_ppl_trust_cache_rt(void)
+static uint64_t xpf_find_ppl_trust_cache_rt(void)
 {
 	uint64_t pmap_query_trust_cache_safe = xpf_item_resolve("kernelSymbol.pmap_query_trust_cache_safe");
 
@@ -158,7 +158,7 @@ uint64_t xpf_find_ppl_trust_cache_rt(void)
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelPPLTextSection, ppl_trust_cache_rt_refAddr);
 }
 
-uint64_t xpf_find_pmap_pin_kernel_pages(void)
+static uint64_t xpf_find_pmap_pin_kernel_pages(void)
 {
 	PFStringMetric *stringMetric = pfmetric_string_init("pmap_pin_kernel_pages");
 	__block uint64_t pmap_pin_kernel_pages_stringAddr = 0;
@@ -179,7 +179,7 @@ uint64_t xpf_find_pmap_pin_kernel_pages(void)
 	return pmap_pin_kernel_pages;
 }
 
-uint64_t xpf_find_pmap_pin_kernel_pages_reference(uint32_t idx)
+static uint64_t xpf_find_pmap_pin_kernel_pages_reference(uint32_t idx)
 {
 	uint64_t pmap_pin_kernel_pages = xpf_item_resolve("kernelSymbol.pmap_pin_kernel_pages");
 
@@ -206,7 +206,7 @@ uint64_t xpf_find_pmap_pin_kernel_pages_reference(uint32_t idx)
 	return ref;
 }
 
-uint64_t xpf_find_tte_get_ptd(void)
+static uint64_t xpf_find_tte_get_ptd(void)
 {
 	PFStringMetric *stringMetric = pfmetric_string_init("tte_get_ptd");
 	__block uint64_t tte_get_ptd_stringAddr = 0;
@@ -237,7 +237,7 @@ uint64_t xpf_find_tte_get_ptd(void)
 	return tte_get_ptd;
 }
 
-uint64_t xpf_find_pv_head_table(void)
+static uint64_t xpf_find_pv_head_table(void)
 {
 	uint64_t tte_get_ptd = xpf_item_resolve("kernelSymbol.tte_get_ptd");
 

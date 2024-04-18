@@ -25,7 +25,7 @@ bool xpf_bad_recovery_supported(void)
 	return false;
 }
 
-uint64_t xpf_find_hw_lck_ticket_reserve_orig_allow_invalid_signed(void)
+static uint64_t xpf_find_hw_lck_ticket_reserve_orig_allow_invalid_signed(void)
 {
 	uint32_t strX10X16Any = 0, strX10X16AnyMask = 0;
 	arm64_gen_str_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_X(10), ARM64_REG_X(16), OPT_UINT64_NONE, &strX10X16Any, &strX10X16AnyMask);
@@ -57,7 +57,7 @@ uint64_t xpf_find_hw_lck_ticket_reserve_orig_allow_invalid_signed(void)
 	return hw_lck_ticket_reserve_orig_allow_invalid_signed;
 }
 
-uint64_t xpf_find_hw_lck_ticket_reserve_orig_allow_invalid(void)
+static uint64_t xpf_find_hw_lck_ticket_reserve_orig_allow_invalid(void)
 {
 	uint32_t adrAny = 0, adrAnyMask = 0;
 	arm64_gen_adr_p(OPT_BOOL(false), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_REG_ANY, &adrAny, &adrAnyMask);
@@ -66,7 +66,7 @@ uint64_t xpf_find_hw_lck_ticket_reserve_orig_allow_invalid(void)
 	return pfsec_find_prev_inst(gXPF.kernelTextSection, hw_lck_ticket_reserve_orig_allow_invalid_signed, 40, adrAny, adrAnyMask);
 }
 
-uint64_t xpf_find_br_x22_gadget(void)
+static uint64_t xpf_find_br_x22_gadget(void)
 {
 	// Gadget:
 	// pacia x22, sp
@@ -92,7 +92,7 @@ uint64_t xpf_find_br_x22_gadget(void)
 	return brX22Gadget;
 }
 
-uint64_t xpf_find_exception_return_after_check(void)
+static uint64_t xpf_find_exception_return_after_check(void)
 {
 	uint64_t exception_return = xpf_item_resolve("kernelSymbol.exception_return");
 
@@ -113,7 +113,7 @@ uint64_t xpf_find_exception_return_after_check(void)
 	return exception_return_after_check;
 }
 
-uint64_t xpf_find_exception_return_after_check_no_restore(void)
+static uint64_t xpf_find_exception_return_after_check_no_restore(void)
 {
 	uint64_t exception_return = xpf_item_resolve("kernelSymbol.exception_return");
 
@@ -131,7 +131,7 @@ uint64_t xpf_find_exception_return_after_check_no_restore(void)
 	return exception_return_after_check_no_restore;
 }
 
-uint64_t xpf_find_ldp_x0_x1_x8_gadget(void)
+static uint64_t xpf_find_ldp_x0_x1_x8_gadget(void)
 {
 	uint32_t inst[] = (uint32_t[]){
 		0xa9400500, // ldp x0, x1, [x8]
@@ -148,7 +148,7 @@ uint64_t xpf_find_ldp_x0_x1_x8_gadget(void)
 	return ldp_x0_x1_x8_gadget;
 }
 
-uint64_t xpf_find_str_x8_x9_gadget(void)
+static uint64_t xpf_find_str_x8_x9_gadget(void)
 {
 	uint32_t inst[] = (uint32_t[]){
 		0xf9000128, // str x8, [x9]
@@ -165,7 +165,7 @@ uint64_t xpf_find_str_x8_x9_gadget(void)
 	return str_x8_x9_gadget;
 }
 
-uint64_t xpf_find_str_x0_x19_ldr_x20_gadget(void)
+static uint64_t xpf_find_str_x0_x19_ldr_x20_gadget(void)
 {
 	uint32_t ldrAnyX20Any = 0, ldrAnyX20AnyMask = 0;
 	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_X(20), OPT_UINT64_NONE, &ldrAnyX20Any, &ldrAnyX20AnyMask);
@@ -189,7 +189,7 @@ uint64_t xpf_find_str_x0_x19_ldr_x20_gadget(void)
 	return str_x0_x19_ldr_x20_gadget;
 }
 
-uint64_t xpf_find_pacda_gadget(void)
+static uint64_t xpf_find_pacda_gadget(void)
 {
 	uint32_t inst[] = (uint32_t[]){
 		0xf100003f, // cmp x1, #0
@@ -209,7 +209,7 @@ uint64_t xpf_find_pacda_gadget(void)
 	return pacda_gadget;
 }
 
-uint64_t xpf_find_ml_sign_thread_state(void)
+static uint64_t xpf_find_ml_sign_thread_state(void)
 {
 	uint32_t inst[] = (uint32_t[]){
 		0x9ac03021, // pacga x1, x1, x0
@@ -232,7 +232,7 @@ uint64_t xpf_find_ml_sign_thread_state(void)
 	return ml_sign_thread_state;
 }
 
-uint64_t xpf_find_thread_recover(void)
+static uint64_t xpf_find_thread_recover(void)
 {
 	uint32_t strInst = pfsec_read32(gXPF.kernelTextSection, xpf_item_resolve("kernelGadget.hw_lck_ticket_reserve_orig_allow_invalid_signed"));
 	uint64_t imm = 0;
@@ -240,7 +240,7 @@ uint64_t xpf_find_thread_recover(void)
 	return imm;
 }
 
-uint64_t xpf_find_thread_machine_kstackptr(void)
+static uint64_t xpf_find_thread_machine_kstackptr(void)
 {
 	uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
 	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
@@ -290,7 +290,7 @@ uint64_t xpf_find_thread_machine_kstackptr(void)
 	return machine_kstackptr;
 }
 
-uint64_t xpf_find_thread_machine_CpuDatap(void)
+static uint64_t xpf_find_thread_machine_CpuDatap(void)
 {
 	uint32_t ldrX11X10AnyInst = 0, ldrX11X10AnyMask = 0;
 	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_X(11), ARM64_REG_X(10), OPT_UINT64_NONE, &ldrX11X10AnyInst, &ldrX11X10AnyMask);
@@ -314,7 +314,7 @@ uint64_t xpf_find_thread_machine_CpuDatap(void)
 	return machine_CpuDatap;
 }
 
-uint64_t xpf_find_thread_machine_contextData(void)
+static uint64_t xpf_find_thread_machine_contextData(void)
 {
 	uint32_t inst[3] = {
 		0xd5184100, // msr sp_el0, x0
