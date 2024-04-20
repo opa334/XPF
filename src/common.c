@@ -779,7 +779,6 @@ static uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 static uint64_t xpf_find_nsysent(void)
 {
 	uint64_t proc_get_syscall_filter_mask_size = xpf_item_resolve("kernelSymbol.proc_get_syscall_filter_mask_size");
-	printf("proc_get_syscall_filter_mask_size: %llx\n", proc_get_syscall_filter_mask_size);
 
 	uint32_t movAnyInst = 0, movAnyMask = 0;
 	arm64_gen_mov_imm('z', ARM64_REG_ANY, OPT_UINT64_NONE, OPT_UINT64_NONE, &movAnyInst, &movAnyMask);
