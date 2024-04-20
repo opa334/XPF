@@ -943,11 +943,16 @@ static uint64_t xpf_find_thread_machine_CpuDatap(void)
 
         uint32_t ldrInst = 0, ldrMask = 0;
 		arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, threadReg, OPT_UINT64_NONE, &ldrInst, &ldrMask);
-    
-		uint64_t ldrAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 50, ldrInst, ldrMask);
-        uint32_t readLdrInst = pfsec_read32(gXPF.kernelTextSection, ldrAddr);
-		arm64_dec_ldr_imm(readLdrInst, NULL, NULL, &machine_CpuDatap, NULL, NULL);
 
+		uint64_t ldr1Addr = pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 50, ldrInst, ldrMask);
+		uint64_t ldr2Addr = pfsec_find_prev_inst(gXPF.kernelTextSection, ldr1Addr, 50, ldrInst, ldrMask);
+    
+        uint32_t readLdrInst = pfsec_read32(gXPF.kernelTextSection, ldr1Addr);
+		arm64_dec_ldr_imm(readLdrInst, NULL, NULL, &machine_CpuDatap, NULL, NULL);
+        if (machine_CpuDatap == 0) {
+            readLdrInst = pfsec_read32(gXPF.kernelTextSection, ldr2Addr);
+            arm64_dec_ldr_imm(readLdrInst, NULL, NULL, &machine_CpuDatap, NULL, NULL);
+        }
 		*stop = true;
 	});
 	pfmetric_free(panicBranchXrefMetric);
