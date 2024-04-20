@@ -710,23 +710,35 @@ static uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 		syscallMasksStringAddr = vmaddr;
 		*stop = true;
 	});
+	pfmetric_free(stringMetric);
+
+	if (!syscallMasksStringAddr) {
+		// iOS 15.0 betas 1-3
+		stringMetric = pfmetric_string_init("\"invalid # of syscalls from xnu!\" @%s:%d");
+		pfmetric_run(stringSec, stringMetric, ^(uint64_t vmaddr, bool *stop) {
+			syscallMasksStringAddr = vmaddr;
+			*stop = true;
+		});
+		pfmetric_free(stringMetric);
+	}
 
 	if (!syscallMasksStringAddr && gXPF.kernelStringSection && !gXPF.kernelSandboxStringSection) {
 		// On A11 15.x it is in kernelStringSection, on A10 and A9 it is not, on 16.x it is not
+		stringMetric = pfmetric_string_init("\"invalid # of syscalls from xnu\" @%s:%d");
 		pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
 			syscallMasksStringAddr = vmaddr;
 			*stop = true;
 		});
+		pfmetric_free(stringMetric);
 
 		if (!syscallMasksStringAddr) {
 			// iOS 15.0 betas 1-3
-			pfmetric_free(stringMetric);
 			stringMetric = pfmetric_string_init("\"invalid # of syscalls from xnu!\" @%s:%d");
-
 			pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
 				syscallMasksStringAddr = vmaddr;
 				*stop = true;
 			});
+			pfmetric_free(stringMetric);
 		}
 
 		if (syscallMasksStringAddr) {
@@ -734,8 +746,6 @@ static uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 			stringSec = gXPF.kernelStringSection;
 		}
 	}
-
-	pfmetric_free(stringMetric);
 
 	PFXrefMetric *stringXrefMetric = pfmetric_xref_init(syscallMasksStringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t invalidSyscallLogRefAddr = 0;
@@ -769,6 +779,7 @@ static uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 static uint64_t xpf_find_nsysent(void)
 {
 	uint64_t proc_get_syscall_filter_mask_size = xpf_item_resolve("kernelSymbol.proc_get_syscall_filter_mask_size");
+	printf("proc_get_syscall_filter_mask_size: %llx\n", proc_get_syscall_filter_mask_size);
 
 	uint32_t movAnyInst = 0, movAnyMask = 0;
 	arm64_gen_mov_imm('z', ARM64_REG_ANY, OPT_UINT64_NONE, OPT_UINT64_NONE, &movAnyInst, &movAnyMask);
@@ -941,18 +952,18 @@ static uint64_t xpf_find_thread_machine_CpuDatap(void)
 		uint64_t msrTPIDR_EL1Addr = pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 50, 0xd538d080, 0xffffffe0);
 		arm64_register threadReg = ARM64_REG_X(pfsec_read32(gXPF.kernelTextSection, msrTPIDR_EL1Addr) & 0x1f);
 
-        uint32_t ldrInst = 0, ldrMask = 0;
+		uint32_t ldrInst = 0, ldrMask = 0;
 		arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, threadReg, OPT_UINT64_NONE, &ldrInst, &ldrMask);
 
 		uint64_t ldr1Addr = pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 50, ldrInst, ldrMask);
 		uint64_t ldr2Addr = pfsec_find_prev_inst(gXPF.kernelTextSection, ldr1Addr, 50, ldrInst, ldrMask);
-    
-        uint32_t readLdrInst = pfsec_read32(gXPF.kernelTextSection, ldr1Addr);
+	
+		uint32_t readLdrInst = pfsec_read32(gXPF.kernelTextSection, ldr1Addr);
 		arm64_dec_ldr_imm(readLdrInst, NULL, NULL, &machine_CpuDatap, NULL, NULL);
-        if (machine_CpuDatap == 0) {
-            readLdrInst = pfsec_read32(gXPF.kernelTextSection, ldr2Addr);
-            arm64_dec_ldr_imm(readLdrInst, NULL, NULL, &machine_CpuDatap, NULL, NULL);
-        }
+		if (machine_CpuDatap == 0) {
+			readLdrInst = pfsec_read32(gXPF.kernelTextSection, ldr2Addr);
+			arm64_dec_ldr_imm(readLdrInst, NULL, NULL, &machine_CpuDatap, NULL, NULL);
+		}
 		*stop = true;
 	});
 	pfmetric_free(panicBranchXrefMetric);
@@ -962,30 +973,30 @@ static uint64_t xpf_find_thread_machine_CpuDatap(void)
 
 static uint64_t xpf_find_thread_machine_kstackptr(void)
 {
-    __block uint64_t stringAddr = 0;
-    PFStringMetric *stringMetric = pfmetric_string_init("Invalid kernel stack pointer (probable corruption).");
-    pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
-        stringAddr = vmaddr;
-        *stop = true;
-    });
-    pfmetric_free(stringMetric);
+	__block uint64_t stringAddr = 0;
+	PFStringMetric *stringMetric = pfmetric_string_init("Invalid kernel stack pointer (probable corruption).");
+	pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
+		stringAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(stringMetric);
 
-    __block uint64_t machine_kstackptr = 0;
-    PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
-    pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
-        uint64_t msrTPIDR_EL1Addr = pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 50, 0xd538d080, 0xffffffe0);
-        arm64_register threadReg = ARM64_REG_X(pfsec_read32(gXPF.kernelTextSection, msrTPIDR_EL1Addr) & 0x1f);
+	__block uint64_t machine_kstackptr = 0;
+	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
+	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		uint64_t msrTPIDR_EL1Addr = pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 50, 0xd538d080, 0xffffffe0);
+		arm64_register threadReg = ARM64_REG_X(pfsec_read32(gXPF.kernelTextSection, msrTPIDR_EL1Addr) & 0x1f);
 
-        uint32_t ldrInst = 0, ldrMask = 0;
+		uint32_t ldrInst = 0, ldrMask = 0;
 		arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, threadReg, OPT_UINT64_NONE, &ldrInst, &ldrMask);
-    
+	
 		uint64_t ldrAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 50, ldrInst, ldrMask);
-        uint32_t readLdrInst = pfsec_read32(gXPF.kernelTextSection, ldrAddr);
+		uint32_t readLdrInst = pfsec_read32(gXPF.kernelTextSection, ldrAddr);
 		arm64_dec_ldr_imm(readLdrInst, NULL, NULL, &machine_kstackptr, NULL, NULL);
 
-        *stop = true;
-    });
-    pfmetric_free(xrefMetric);
+		*stop = true;
+	});
+	pfmetric_free(xrefMetric);
 
 	return machine_kstackptr;
 }
@@ -1073,6 +1084,6 @@ void xpf_common_init(void)
 	xpf_item_register("kernelGadget.kcall_return", xpf_find_kcall_return, NULL);
 
 	xpf_item_register("kernelStruct.thread.machine_CpuDatap", xpf_find_thread_machine_CpuDatap, NULL);
-    xpf_item_register("kernelStruct.thread.machine_kstackptr", xpf_find_thread_machine_kstackptr, NULL);
-    xpf_item_register("kernelStruct.thread.machine_contextData", xpf_find_thread_machine_contextData, NULL);
+	xpf_item_register("kernelStruct.thread.machine_kstackptr", xpf_find_thread_machine_kstackptr, NULL);
+	xpf_item_register("kernelStruct.thread.machine_contextData", xpf_find_thread_machine_contextData, NULL);
 }
