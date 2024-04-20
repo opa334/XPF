@@ -180,6 +180,9 @@ XPFSet gArm64KcallSet = {
 		"kernelSymbol.exception_return",
 		"kernelGadget.kcall_return",
 		"kernelGadget.str_x8_x0",
+		"kernelStruct.thread.machine_CpuDatap",
+		"kernelStruct.thread.machine_kstackptr",
+		"kernelStruct.thread.machine_contextData",
 		NULL
 	},
 };

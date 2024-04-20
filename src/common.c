@@ -917,6 +917,100 @@ static uint64_t xpf_find_kcall_return(void)
 	return kcall_return;
 }
 
+static uint64_t xpf_find_thread_machine_CpuDatap(void)
+{
+	__block uint64_t stringAddr = 0;
+	PFStringMetric *stringMetric = pfmetric_string_init("kernel_debug_early_end() not call on boot processor @%s:%d");
+	pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
+		stringAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(stringMetric);
+
+	__block uint64_t panicBranch = 0;
+	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
+	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		panicBranch = vmaddr - (5 * sizeof(uint32_t));
+		*stop = true;
+	});
+	pfmetric_free(xrefMetric);
+
+	__block uint64_t machine_CpuDatap = 0;
+	PFXrefMetric *panicBranchXrefMetric = pfmetric_xref_init(panicBranch, XREF_TYPE_MASK_JUMP);
+	pfmetric_run(gXPF.kernelTextSection, panicBranchXrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		uint64_t msrTPIDR_EL1Addr = pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 50, 0xd538d080, 0xffffffe0);
+		arm64_register threadReg = ARM64_REG_X(pfsec_read32(gXPF.kernelTextSection, msrTPIDR_EL1Addr) & 0x1f);
+
+        uint32_t ldrInst = 0, ldrMask = 0;
+		arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, threadReg, OPT_UINT64_NONE, &ldrInst, &ldrMask);
+    
+		uint64_t ldrAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 50, ldrInst, ldrMask);
+        uint32_t readLdrInst = pfsec_read32(gXPF.kernelTextSection, ldrAddr);
+		arm64_dec_ldr_imm(readLdrInst, NULL, NULL, &machine_CpuDatap, NULL, NULL);
+
+		*stop = true;
+	});
+	pfmetric_free(panicBranchXrefMetric);
+
+	return machine_CpuDatap;
+}
+
+static uint64_t xpf_find_thread_machine_kstackptr(void)
+{
+    __block uint64_t stringAddr = 0;
+    PFStringMetric *stringMetric = pfmetric_string_init("Invalid kernel stack pointer (probable corruption).");
+    pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
+        stringAddr = vmaddr;
+        *stop = true;
+    });
+    pfmetric_free(stringMetric);
+
+    __block uint64_t machine_kstackptr = 0;
+    PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
+    pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
+        uint64_t msrTPIDR_EL1Addr = pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 50, 0xd538d080, 0xffffffe0);
+        arm64_register threadReg = ARM64_REG_X(pfsec_read32(gXPF.kernelTextSection, msrTPIDR_EL1Addr) & 0x1f);
+
+        uint32_t ldrInst = 0, ldrMask = 0;
+		arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, threadReg, OPT_UINT64_NONE, &ldrInst, &ldrMask);
+    
+		uint64_t ldrAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 50, ldrInst, ldrMask);
+        uint32_t readLdrInst = pfsec_read32(gXPF.kernelTextSection, ldrAddr);
+		arm64_dec_ldr_imm(readLdrInst, NULL, NULL, &machine_kstackptr, NULL, NULL);
+
+        *stop = true;
+    });
+    pfmetric_free(xrefMetric);
+
+	return machine_kstackptr;
+}
+
+static uint64_t xpf_find_thread_machine_contextData(void)
+{
+	uint32_t inst[3] = {
+		0xd5184100, // msr sp_el0, x0
+		0xa8c107e0, // ldp x0, x1, [sp], #0x10
+		0xd50040bf, // msr spsel, #0
+	};
+	uint32_t mask[3] = {
+		0xffffffff,
+		0xffffffff,
+		0xffffffff,
+	};
+
+	__block uint64_t machine_contextData = 0;
+	PFPatternMetric *patternMetric = pfmetric_pattern_init(inst, mask, sizeof(inst), sizeof(uint32_t));
+	pfmetric_run(gXPF.kernelTextSection, patternMetric, ^(uint64_t vmaddr, bool *stop) {
+		uint16_t imm = 0;
+		arm64_dec_add_imm(pfsec_read32(gXPF.kernelTextSection, vmaddr - 12), NULL, NULL, &imm);
+		machine_contextData = imm;
+		*stop = true;
+	});
+	pfmetric_free(patternMetric);
+
+	return machine_contextData;
+}
+
 void xpf_common_init(void)
 {
 	xpf_item_register("kernelSymbol.start_first_cpu", xpf_find_start_first_cpu, NULL);
@@ -972,4 +1066,8 @@ void xpf_common_init(void)
 	xpf_item_register("kernelGadget.str_x8_x0", xpf_find_str_x8_x0_gadget, NULL);
 	xpf_item_register("kernelSymbol.exception_return", xpf_find_exception_return, NULL);
 	xpf_item_register("kernelGadget.kcall_return", xpf_find_kcall_return, NULL);
+
+	xpf_item_register("kernelStruct.thread.machine_CpuDatap", xpf_find_thread_machine_CpuDatap, NULL);
+    xpf_item_register("kernelStruct.thread.machine_kstackptr", xpf_find_thread_machine_kstackptr, NULL);
+    xpf_item_register("kernelStruct.thread.machine_contextData", xpf_find_thread_machine_contextData, NULL);
 }

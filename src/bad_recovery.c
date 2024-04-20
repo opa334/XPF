@@ -290,56 +290,6 @@ static uint64_t xpf_find_thread_machine_kstackptr(void)
 	return machine_kstackptr;
 }
 
-static uint64_t xpf_find_thread_machine_CpuDatap(void)
-{
-	uint32_t ldrX11X10AnyInst = 0, ldrX11X10AnyMask = 0;
-	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_X(11), ARM64_REG_X(10), OPT_UINT64_NONE, &ldrX11X10AnyInst, &ldrX11X10AnyMask);
-
-	uint32_t inst[3] = {
-		0xd50343df, // msr daifset, #3
-		ldrX11X10AnyInst, // ldr x11, [x10, #?]
-	};
-	uint32_t mask[3] = {
-		0xffffffff,
-		ldrX11X10AnyMask,
-	};
-
-	__block uint64_t machine_CpuDatap = 0;
-	PFPatternMetric *patternMetric = pfmetric_pattern_init(inst, mask, sizeof(inst), sizeof(uint32_t));
-	pfmetric_run(gXPF.kernelTextSection, patternMetric, ^(uint64_t vmaddr, bool *stop) {
-		arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, vmaddr + 4), NULL, NULL, &machine_CpuDatap, NULL, NULL);
-		*stop = true;
-	});
-	pfmetric_free(patternMetric);
-	return machine_CpuDatap;
-}
-
-static uint64_t xpf_find_thread_machine_contextData(void)
-{
-	uint32_t inst[3] = {
-		0xd5184100, // msr sp_el0, x0
-		0xa8c107e0, // ldp x0, x1, [sp], #0x10
-		0xd50040bf, // msr spsel, #0
-	};
-	uint32_t mask[3] = {
-		0xffffffff,
-		0xffffffff,
-		0xffffffff,
-	};
-
-	__block uint64_t machine_contextData = 0;
-	PFPatternMetric *patternMetric = pfmetric_pattern_init(inst, mask, sizeof(inst), sizeof(uint32_t));
-	pfmetric_run(gXPF.kernelTextSection, patternMetric, ^(uint64_t vmaddr, bool *stop) {
-		uint16_t imm = 0;
-		arm64_dec_add_imm(pfsec_read32(gXPF.kernelTextSection, vmaddr - 12), NULL, NULL, &imm);
-		machine_contextData = imm;
-		*stop = true;
-	});
-	pfmetric_free(patternMetric);
-
-	return machine_contextData;
-}
-
 void xpf_bad_recovery_init(void)
 {
 	if (gXPF.kernelIsArm64e && xpf_bad_recovery_supported()) {
@@ -354,8 +304,5 @@ void xpf_bad_recovery_init(void)
 		xpf_item_register("kernelGadget.pacda", xpf_find_pacda_gadget, NULL);
 		xpf_item_register("kernelSymbol.ml_sign_thread_state", xpf_find_ml_sign_thread_state, NULL);
 		xpf_item_register("kernelStruct.thread.recover", xpf_find_thread_recover, NULL);
-		xpf_item_register("kernelStruct.thread.machine_kstackptr", xpf_find_thread_machine_kstackptr, NULL);
-		xpf_item_register("kernelStruct.thread.machine_CpuDatap", xpf_find_thread_machine_CpuDatap, NULL);
-		xpf_item_register("kernelStruct.thread.machine_contextData", xpf_find_thread_machine_contextData, NULL);
 	}
 }
