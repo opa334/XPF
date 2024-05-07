@@ -634,26 +634,16 @@ static uint64_t xpf_find_cdevsw(void)
 {
 	uint64_t vn_kqfilter = xpf_item_resolve("kernelSymbol.vn_kqfilter");
 
-	uint32_t blAny = 0, blAnyMask = 0;
-	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAny, &blAnyMask);
-	uint64_t bl_spec_kqfilterAddr = vn_kqfilter;
-
-	/*
-		iOS 15 arm64/arm64e = 15
-		iOS 16 arm64/arm64e = 6
-		iOS 17 arm64 = 5
-		iOS 17 arm64e = 6
-	*/
-	int skip = (strcmp(gXPF.darwinVersion, "22.0.0") >= 0) ? (gXPF.kernelIsArm64e ? 6 : 5) : 15;
-	for (int i = 0; i < skip; i++) {
-		bl_spec_kqfilterAddr = pfsec_find_next_inst(gXPF.kernelTextSection, bl_spec_kqfilterAddr + 4, 100, blAny, blAnyMask);   
-	}
+	uint32_t movW2Inst = 0, movW2Mask = 0;
+	arm64_gen_mov_imm('z', ARM64_REG_W(2), OPT_UINT64(0x20), OPT_UINT64(0), &movW2Inst, &movW2Mask);
+	uint64_t before_bl_spec_kqfilterAddr = pfsec_find_next_inst(gXPF.kernelTextSection, vn_kqfilter, 100, movW2Inst, movW2Mask);
+	uint64_t bl_spec_kqfilterAddr = before_bl_spec_kqfilterAddr + 4;
 
 	uint64_t spec_kqfilter = 0;
 	arm64_dec_b_l(pfsec_read32(gXPF.kernelTextSection, bl_spec_kqfilterAddr), bl_spec_kqfilterAddr, &spec_kqfilter, NULL);
 
 	uint32_t movW10_0x70 = 0, mov10_0x70Mask = 0;
-	arm64_gen_mov_imm('z', ARM64_REG_W(10), OPT_UINT64(0x70), OPT_UINT64_NONE, &movW10_0x70, &mov10_0x70Mask);
+	arm64_gen_mov_imm('z', ARM64_REG_W(10), OPT_UINT64(0x70), OPT_UINT64(0), &movW10_0x70, &mov10_0x70Mask);
 	uint64_t movAddr = pfsec_find_next_inst(gXPF.kernelTextSection, spec_kqfilter, 0, movW10_0x70, mov10_0x70Mask);
 
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, movAddr + 0x8);
