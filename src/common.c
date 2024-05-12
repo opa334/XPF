@@ -458,23 +458,36 @@ static uint64_t xpf_find_task_itk_space(void)
 
 static uint64_t xpf_find_vm_reference(uint32_t idx)
 {
-	uint32_t inst = 0x120a6d28; /*and w8, w9, #0xffc3ffff*/
+	uint32_t inst = 0x120a6d28; // and w8, w9, #0xffc3ffff
 	PFPatternMetric *patternMetric = pfmetric_pattern_init(&inst, NULL, sizeof(inst), sizeof(uint32_t));
-	__block uint64_t ref = 0;
-	pfmetric_run(gXPF.kernelTextSection, patternMetric, ^(uint64_t vmaddr, bool *stop) {
-		uint32_t ldrAny = 0, ldrAnyMask = 0;
-		arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
-		uint64_t toCheck = vmaddr;
-		uint64_t ldrAddr = 0;
-		for (int i = 0; i < idx; i++) {
-			ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 20, ldrAny, ldrAnyMask);
-			toCheck = ldrAddr + 4;
-		}
 
-		ref = pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
+	__block uint64_t andAddr = 0;
+	pfmetric_run(gXPF.kernelTextSection, patternMetric, ^(uint64_t vmaddr, bool *stop) {
+		andAddr = vmaddr;
+		*stop = true;
 	});
 	pfmetric_free(patternMetric);
-	return ref;
+
+	if (!andAddr) {
+		inst = 0x120a6d08; // and w8, w8, #0xffc3ffff (iOS 17)
+		patternMetric = pfmetric_pattern_init(&inst, NULL, sizeof(inst), sizeof(uint32_t));
+		pfmetric_run(gXPF.kernelTextSection, patternMetric, ^(uint64_t vmaddr, bool *stop) {
+			andAddr = vmaddr;
+			*stop = true;
+		});
+		pfmetric_free(patternMetric);
+	}
+
+	uint32_t ldrAny = 0, ldrAnyMask = 0;
+	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
+	uint64_t toCheck = andAddr;
+	uint64_t ldrAddr = 0;
+	for (int i = 0; i < idx; i++) {
+		ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 20, ldrAny, ldrAnyMask);
+		toCheck = ldrAddr + 4;
+	}
+
+	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);;
 }
 
 static uint64_t xpf_find_vm_map_pmap(void)
