@@ -12,10 +12,14 @@ enum {
 
 typedef struct s_PFSection {
 	MachO *macho;
+	char sectname[16];
+	char segname[16];
 	uint64_t fileoff;
 	uint64_t vmaddr;
 	uint64_t size;
 	uint8_t *cache;
+	uint32_t initprot;
+	uint32_t maxprot;
 	bool ownsCache;
 } PFSection;
 
@@ -30,6 +34,7 @@ int pfsec_set_cached(PFSection *section, bool cached);
 uint64_t pfsec_find_prev_inst(PFSection *section, uint64_t startAddr, uint32_t searchCount, uint32_t inst, uint32_t mask);
 uint64_t pfsec_find_next_inst(PFSection *section, uint64_t startAddr, uint32_t searchCount, uint32_t inst, uint32_t mask);
 uint64_t pfsec_find_function_start(PFSection *section, uint64_t midAddr);
+bool pfsec_contains_vmaddr(PFSection *section, uint64_t addr);
 void pfsec_free(PFSection *section);
 
 
@@ -56,7 +61,8 @@ typedef enum {
     XREF_TYPE_MASK_CALL      = (1 << 0),
     XREF_TYPE_MASK_JUMP      = (1 << 1),
     XREF_TYPE_MASK_REFERENCE = (1 << 2),
-    XREF_TYPE_MASK_ALL = (XREF_TYPE_MASK_CALL | XREF_TYPE_MASK_REFERENCE),
+    XREF_TYPE_MASK_POINTER   = (1 << 3),
+    XREF_TYPE_MASK_ALL = (XREF_TYPE_MASK_CALL | XREF_TYPE_MASK_REFERENCE | XREF_TYPE_MASK_POINTER),
 } PFXrefTypeMask;
 
 typedef struct s_PFXrefMetric {
