@@ -866,14 +866,32 @@ static uint64_t xpf_find_developer_mode_enabled(void)
 	uint32_t ldrLitAnyInst = 0, ldrLitAnyMask = 0;
 	arm64_gen_ldr_lit(ARM64_REG_ANY, OPT_UINT64_NONE, OPT_UINT64_NONE, &ldrLitAnyInst, &ldrLitAnyMask);
 
+	__block uint64_t developer_mode_candidate = 0;
 	uint64_t refAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, afterRefAddr, 25, ldrLitAnyInst, ldrLitAnyMask);
 	if (refAddr) {
-		uint64_t target = 0;
-		arm64_dec_ldr_lit(pfsec_read32(gXPF.kernelTextSection, refAddr), refAddr, &target, NULL);
-		return target;
+		arm64_dec_ldr_lit(pfsec_read32(gXPF.kernelTextSection, refAddr), refAddr, &developer_mode_candidate, NULL);
 	}
-	refAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, afterRefAddr, 50, adrpAnyInst, adrpAnyMask);
-	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, refAddr + 4);
+	else {
+		refAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, afterRefAddr, 50, adrpAnyInst, adrpAnyMask);
+		developer_mode_candidate = pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, refAddr + 4);
+	}
+
+	__block uint64_t developer_mode_enabled = false;
+	if (pfsec_contains_vmaddr(gXPF.kernelDataConstSection, developer_mode_candidate)) {
+		// developer_mode_candidate is developer_mode_enabled
+		developer_mode_enabled = developer_mode_candidate;
+	}
+	else {
+		// developer_mode_candidate is developer_mode_storage
+		PFXrefMetric *storageXref = pfmetric_xref_init(developer_mode_candidate, XREF_TYPE_MASK_POINTER);
+		pfmetric_run(gXPF.kernelDataConstSection, storageXref, ^(uint64_t vmaddr, bool *stop) {
+			developer_mode_enabled = vmaddr;
+			*stop = true;
+		});
+		pfmetric_free(storageXref);
+	}
+
+	return developer_mode_enabled;
 }
 
 static uint64_t xpf_find_str_x8_x0_gadget(void)
