@@ -80,7 +80,7 @@ static uint64_t xpf_find_ppl_handler_table(void)
 static uint64_t xpf_find_ppl_routine(uint32_t idx)
 {
 	uint64_t ppl_handler_table = xpf_item_resolve("kernelSymbol.ppl_handler_table");
-	return xpfsec_read_ptr(gXPF.kernelDataConstSection, ppl_handler_table + (sizeof(uint64_t) * idx));
+	return pfsec_read_pointer(gXPF.kernelDataConstSection, ppl_handler_table + (sizeof(uint64_t) * idx));
 }
 
 static uint64_t xpf_find_ppl_dispatch_func(uint32_t idx)

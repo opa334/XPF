@@ -204,6 +204,16 @@ XPFSet *gSets[] = {
 
 XPF gXPF = { 0 };
 
+PFSection *xpf_pfsec_init(const char *filesetEntryId, const char *segName, const char *sectName)
+{
+	PFSection *section = pfsec_init_from_macho(gXPF.kernel, gXPF.kernelIsFileset ? filesetEntryId : NULL, segName, sectName);
+	if (section) {
+		pfsec_set_cached(section, true);
+		pfsec_set_pointer_decoder(section, xpfsec_decode_pointer);
+	}
+	return section;
+}
+
 int xpf_start_with_kernel_path(const char *kernelPath)
 {
 	gXPF.kernelFd = open(kernelPath, O_RDONLY);
@@ -257,49 +267,26 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 	gXPF.kernel = machoCandidate;
 	gXPF.kernelIsFileset = macho_get_filetype(gXPF.kernel) == MH_FILESET;
 
+	gXPF.kernelTextSection = xpf_pfsec_init("com.apple.kernel", "__TEXT_EXEC", "__text");
+	gXPF.kernelPPLTextSection = xpf_pfsec_init("com.apple.kernel", "__PPLTEXT", "__text");
+	gXPF.kernelStringSection = xpf_pfsec_init("com.apple.kernel", "__TEXT", "__cstring");
+	gXPF.kernelConstSection = xpf_pfsec_init("com.apple.kernel", "__TEXT", "__const");
+	gXPF.kernelDataConstSection = xpf_pfsec_init("com.apple.kernel", "__DATA_CONST", "__const");
+	gXPF.kernelDataSection = xpf_pfsec_init("com.apple.kernel", "__DATA", "__data");
+	gXPF.kernelOSLogSection = xpf_pfsec_init("com.apple.kernel", "__TEXT", "__os_log");
+	gXPF.kernelBootdataInit = xpf_pfsec_init("com.apple.kernel", "__BOOTDATA", "__init");
+
 	if (gXPF.kernelIsFileset) {
-		gXPF.kernelTextSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__TEXT_EXEC", "__text");
-		gXPF.kernelPPLTextSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__PPLTEXT", "__text");
-		gXPF.kernelStringSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__TEXT", "__cstring");
-		gXPF.kernelConstSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__TEXT", "__const");
-		gXPF.kernelDataConstSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__DATA_CONST", "__const");
-		gXPF.kernelDataSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__DATA", "__data");
-		gXPF.kernelOSLogSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__TEXT", "__os_log");
-		gXPF.kernelBootdataInit = pfsec_init_from_macho(gXPF.kernel, "com.apple.kernel", "__BOOTDATA", "__init");
-		gXPF.kernelAMFITextSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.driver.AppleMobileFileIntegrity", "__TEXT_EXEC", "__text");
-		gXPF.kernelAMFIStringSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.driver.AppleMobileFileIntegrity", "__TEXT", "__cstring");
-		gXPF.kernelSandboxTextSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.security.sandbox", "__TEXT_EXEC", "__text");
-		gXPF.kernelSandboxStringSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.security.sandbox", "__TEXT", "__cstring");
-		gXPF.kernelInfoPlistSection = pfsec_init_from_macho(gXPF.kernel, "com.apple.security.AppleImage4", "__TEXT", "__info_plist");
+		gXPF.kernelAMFITextSection = xpf_pfsec_init("com.apple.driver.AppleMobileFileIntegrity", "__TEXT_EXEC", "__text");
+		gXPF.kernelAMFIStringSection = xpf_pfsec_init("com.apple.driver.AppleMobileFileIntegrity", "__TEXT", "__cstring");
+		gXPF.kernelSandboxTextSection = xpf_pfsec_init("com.apple.security.sandbox", "__TEXT_EXEC", "__text");
+		gXPF.kernelSandboxStringSection = xpf_pfsec_init("com.apple.security.sandbox", "__TEXT", "__cstring");
+		gXPF.kernelInfoPlistSection = xpf_pfsec_init("com.apple.security.AppleImage4", "__TEXT", "__info_plist");
 	}
 	else {
-		gXPF.kernelTextSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__TEXT_EXEC", "__text");
-		gXPF.kernelPPLTextSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__PPLTEXT", "__text");
-		gXPF.kernelStringSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__TEXT", "__cstring");
-		gXPF.kernelConstSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__TEXT", "__const");
-		gXPF.kernelDataConstSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__DATA_CONST", "__const");
-		gXPF.kernelDataSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__DATA", "__data");
-		gXPF.kernelOSLogSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__TEXT", "__os_log");
-		gXPF.kernelBootdataInit = pfsec_init_from_macho(gXPF.kernel, NULL, "__BOOTDATA", "__init");
-		gXPF.kernelPrelinkTextSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__PRELINK_TEXT", "__text");
-		gXPF.kernelPLKTextSection = pfsec_init_from_macho(gXPF.kernel, NULL, "__PLK_TEXT_EXEC", "__text");
+		gXPF.kernelPrelinkTextSection = xpf_pfsec_init(NULL, "__PRELINK_TEXT", "__text");
+		gXPF.kernelPLKTextSection = xpf_pfsec_init(NULL, "__PLK_TEXT_EXEC", "__text");
 	}
-
-	if (gXPF.kernelTextSection) pfsec_set_cached(gXPF.kernelTextSection, true);
-	if (gXPF.kernelPPLTextSection) pfsec_set_cached(gXPF.kernelPPLTextSection, true);
-	if (gXPF.kernelStringSection) pfsec_set_cached(gXPF.kernelStringSection, true);
-	if (gXPF.kernelConstSection) pfsec_set_cached(gXPF.kernelConstSection, true);
-	if (gXPF.kernelDataConstSection) pfsec_set_cached(gXPF.kernelDataConstSection, true);
-	if (gXPF.kernelDataSection) pfsec_set_cached(gXPF.kernelDataSection, true);
-	if (gXPF.kernelOSLogSection) pfsec_set_cached(gXPF.kernelOSLogSection, true);
-	if (gXPF.kernelBootdataInit) pfsec_set_cached(gXPF.kernelBootdataInit, true);
-	if (gXPF.kernelPrelinkTextSection) pfsec_set_cached(gXPF.kernelPrelinkTextSection, true);
-	if (gXPF.kernelPLKTextSection) pfsec_set_cached(gXPF.kernelPLKTextSection, true);
-	if (gXPF.kernelAMFITextSection) pfsec_set_cached(gXPF.kernelAMFITextSection, true);
-	if (gXPF.kernelAMFIStringSection) pfsec_set_cached(gXPF.kernelAMFIStringSection, true);
-	if (gXPF.kernelSandboxTextSection) pfsec_set_cached(gXPF.kernelSandboxTextSection, true);
-	if (gXPF.kernelSandboxStringSection) pfsec_set_cached(gXPF.kernelSandboxStringSection, true);
-	if (gXPF.kernelInfoPlistSection) pfsec_set_cached(gXPF.kernelInfoPlistSection, true);
 
 	gXPF.kernelBase = UINT64_MAX;
 	gXPF.kernelEntry = 0;
@@ -440,14 +427,14 @@ void xpf_print_all_items(void)
 	}
 }
 
-uint64_t xpfsec_read_ptr(PFSection *section, uint64_t vmaddr)
+uint64_t xpfsec_decode_pointer(PFSection *section, uint64_t vmaddr, uint64_t value)
 {
-	uint64_t r = pfsec_read64(gXPF.kernelDataConstSection, vmaddr);
-	if ((r & 0xff00000000000000) == 0x8000000000000000) {
-		r &= 0x00000000ffffffff;
-		r += gXPF.kernelBase;
+	if ((value & 0xffff000000000000) != 0xffff000000000000) {
+		// Chained fixups, other stuff
+		value &= 0x00000000ffffffff;
+		value += gXPF.kernelBase;
 	}
-	return r;
+	return value;
 }
 
 bool xpf_set_is_supported(const char *name)

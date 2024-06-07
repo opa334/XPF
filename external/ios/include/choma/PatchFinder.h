@@ -21,14 +21,17 @@ typedef struct s_PFSection {
 	uint32_t initprot;
 	uint32_t maxprot;
 	bool ownsCache;
+	uint64_t (*pointerDecoder)(struct s_PFSection *section, uint64_t vmaddr, uint64_t value);
 } PFSection;
 
 PFSection *pfsec_init_from_macho(MachO *macho, const char *filesetEntryId, const char *segName, const char *sectName);
+void pfsec_set_pointer_decoder(PFSection *section, uint64_t (*pointerDecoder)(struct s_PFSection *section, uint64_t vmaddr, uint64_t value));
 int pfsec_read_reloff(PFSection *section, uint64_t rel, size_t size, void *outBuf);
 uint32_t pfsec_read32_reloff(PFSection *section, uint64_t rel);
 int pfsec_read_at_address(PFSection *section, uint64_t vmaddr, void *outBuf, size_t size);
 uint32_t pfsec_read32(PFSection *section, uint64_t vmaddr);
 uint64_t pfsec_read64(PFSection *section, uint64_t vmaddr);
+uint64_t pfsec_read_pointer(PFSection *section, uint64_t vmaddr);
 int pfsec_read_string(PFSection *section, uint64_t vmaddr, char **outString);
 int pfsec_set_cached(PFSection *section, bool cached);
 uint64_t pfsec_find_prev_inst(PFSection *section, uint64_t startAddr, uint32_t searchCount, uint32_t inst, uint32_t mask);

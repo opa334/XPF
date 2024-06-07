@@ -73,7 +73,7 @@ static uint64_t xpf_find_trust_cache_rt(void)
 		toCheck = adrpAddr + 4;
 	}
 	
-	return xpfsec_read_ptr(gXPF.kernelDataConstSection, pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, adrpAddr + 4));
+	return pfsec_read_pointer(gXPF.kernelDataConstSection, pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, adrpAddr + 4));
 }
 
 static uint64_t xpf_find_pmap_tt_deallocate(void)
