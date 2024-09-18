@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#include <choma/FAT.h>
+#include <choma/Fat.h>
 #include <choma/Util.h>
 #include <choma/PatchFinder.h>
 #include <choma/PatchFinder_arm64.h>
@@ -41,7 +41,7 @@ typedef struct s_XPF {
 	void *decompressedKernel;
 	size_t decompressedKernelSize;
 
-	FAT *kernelContainer;
+	Fat *kernelContainer;
 	MachO *kernel;
 	bool kernelIsFileset;
 	bool kernelIsArm64e;

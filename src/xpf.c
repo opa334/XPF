@@ -1,4 +1,4 @@
-#include <choma/FAT.h>
+#include <choma/Fat.h>
 #include <choma/MachO.h>
 #include <choma/PatchFinder.h>
 #include <choma/MachOByteOrder.h>
@@ -242,7 +242,7 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 		}
 	}
 
-	FAT *candidate = fat_init_from_memory_stream(stream);
+	Fat *candidate = fat_init_from_memory_stream(stream);
 	if (!candidate) {
 		xpf_set_error("Failed to load kernel macho");
 		return -1;
