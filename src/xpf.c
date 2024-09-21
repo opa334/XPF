@@ -288,21 +288,10 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 		gXPF.kernelPLKTextSection = xpf_pfsec_init(NULL, "__PLK_TEXT_EXEC", "__text");
 	}
 
-	gXPF.kernelBase = UINT64_MAX;
+	gXPF.kernelBase = macho_get_base_address(gXPF.kernel);
 	gXPF.kernelEntry = 0;
 	macho_enumerate_load_commands(gXPF.kernel, ^(struct load_command loadCommand, uint64_t offset, void *cmd, bool *stop) {
-		if (loadCommand.cmd == LC_SEGMENT_64) {
-			struct segment_command_64 *segCmd = (struct segment_command_64 *)cmd;
-			SEGMENT_COMMAND_64_APPLY_BYTE_ORDER(segCmd, LITTLE_TO_HOST_APPLIER);
-			if (segCmd->vmaddr < gXPF.kernelBase) {
-				if (strncmp(segCmd->segname, "__PRELINK", 9) != 0 
-					&& strncmp(segCmd->segname, "__PLK", 5) != 0) {
-					// PRELINK is before the actual base, but we don't care about it
-					gXPF.kernelBase = segCmd->vmaddr;
-				}
-			}
-		}
-		else if (loadCommand.cmd == LC_UNIXTHREAD) {
+		if (loadCommand.cmd == LC_UNIXTHREAD) {
 			uint8_t *cmdData = ((uint8_t *)cmd + sizeof(struct thread_command));
 			uint8_t *cmdDataEnd = ((uint8_t *)cmd + loadCommand.cmdsize);
 
@@ -319,6 +308,7 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 				}
 				cmdData += (8 + count);
 			}
+			*stop = true;
 		}
 	});
 
