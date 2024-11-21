@@ -3,3 +3,4 @@ xpf_test_macos
 xpf_test_ios
 libxpf.dylib
 libxpf_macos.dylib
+/kernels

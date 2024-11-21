@@ -246,10 +246,10 @@ static uint64_t xpf_find_pmap_enter_options_addr(void)
 
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(pmap_enter_options_ppl, XREF_TYPE_MASK_CALL);
 	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
-		// Find an Xref, that within the the next 20 instructions...
-		if (pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 20, 0x12000000, 0x7F800000) && // Has an AND
-			pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 20, 0x32000000, 0x7F800000) && // Has an ORR
-		   !pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 20, 0x53000000, 0x7F800000)) { // Has no LSL
+		// Find an Xref, that within the the previous 25 instructions...
+		if (pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 25, 0x12000000, 0x7F800000) && // Has an AND
+			pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 25, 0x32000000, 0x7F800000) && // Has an ORR
+		   !pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 25, 0x53000000, 0x7F800000)) { // Has no LSL
 			pmap_enter_options_addr = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
 			*stop = true;
 		}

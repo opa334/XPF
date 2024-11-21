@@ -26,6 +26,7 @@ int main(int argc, char *argv[]) {
 				NULL,
 				NULL,
 				NULL,
+				NULL,
 			};
 
 			uint32_t idx = 6;
