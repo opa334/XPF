@@ -28,9 +28,18 @@ bool xpf_supported_16up(void)
 	return strcmp(gXPF.darwinVersion, "22.0.0") >= 0;
 }
 
+bool xpf_supported_16down(void)
+{
+	return strcmp(gXPF.darwinVersion, "22.0.0") < 0;
+}
+
 bool xpf_supported_arm64(void)
 {
 	return !gXPF.kernelIsArm64e;
+}
+
+bool xpf_supported_arm64_16down(void) {
+	return xpf_supported_arm64() && xpf_supported_16down();
 }
 
 XPFSet gBaseSet = {
@@ -154,7 +163,7 @@ XPFSet gPhysRWSet = {
 
 XPFSet gPerfKRWSet = {
 	.name="perfkrw",
-	.supported=xpf_supported_always,
+	.supported=xpf_supported_16down,
 	.metrics={
 		"kernelSymbol.perfmon_dev_open",
 		"kernelSymbol.perfmon_devices",
@@ -175,7 +184,7 @@ XPFSet gDevModeSet = {
 
 XPFSet gArm64KcallSet = {
 	.name="arm64kcall",
-	.supported=xpf_supported_arm64,
+	.supported=xpf_supported_arm64_16down,
 	.metrics={
 		"kernelSymbol.exception_return",
 		"kernelGadget.kcall_return",

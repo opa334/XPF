@@ -387,6 +387,17 @@ static uint64_t xpf_find_task_collect_crash_info(void)
 			*stop = true;
 		}
 	});
+
+	if (!task_collect_crash_info) {
+		// On iOS 18, this call is followed by a mov w19, #0
+		pfmetric_run(gXPF.kernelTextSection, task_crashinfo_release_refXrefMetric, ^(uint64_t vmaddr, bool *stop) {
+			if (pfsec_read32(gXPF.kernelTextSection, vmaddr + 4) == 0x52800013) {
+				task_collect_crash_info = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
+				*stop = true;
+			}
+		});
+	}
+
 	pfmetric_free(task_crashinfo_release_refXrefMetric);
 
 	return task_collect_crash_info;
