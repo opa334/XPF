@@ -1,3 +1,4 @@
+#include "choma/PatchFinder.h"
 #include "xpf.h"
 
 static uint64_t xpf_find_pmap_image4_trust_caches(void)
@@ -35,7 +36,7 @@ static uint64_t xpf_find_pmap_image4_trust_caches(void)
 	if(found) {
 		uint32_t adrpInst = 0, adrpInstAny = 0;
 		arm64_gen_adr_p(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_REG_ANY, &adrpInst, &adrpInstAny);
-		uint64_t adrpAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, found, 20, adrpInst, adrpInstAny);
+		uint64_t adrpAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, found, 25, adrpInst, adrpInstAny);
 		if (adrpAddr) {
 			return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, adrpAddr + 4);
 		}
@@ -85,6 +86,16 @@ static uint64_t xpf_find_pmap_tt_deallocate(void)
 		*stop = true;
 	});
 	pfmetric_free(stringMetric);
+
+	if (!pmap_tt_deallocate_stringAddr) {
+		stringMetric = pfmetric_string_init("\"pmap_tt_deallocate(): ptdp %p, count %d\\n\"");
+		pmap_tt_deallocate_stringAddr = 0;
+		pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
+			pmap_tt_deallocate_stringAddr = vmaddr;
+			*stop = true;
+		});
+		pfmetric_free(stringMetric);
+	}
 	
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(pmap_tt_deallocate_stringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t pmap_tt_deallocate = 0;
@@ -93,7 +104,7 @@ static uint64_t xpf_find_pmap_tt_deallocate(void)
 		*stop = true;
 	});
 	pfmetric_free(xrefMetric);
-	
+
 	return pmap_tt_deallocate;
 }
 
@@ -108,7 +119,7 @@ static uint64_t xpf_find_pmap_tt_deallocate_reference(uint32_t n)
 	uint64_t blAddr = 0;
 	for (int i = 0; i < 2; i++) {
 		blAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 80, blAny, blAnyMask);
-		toCheck = blAddr + 4;
+		toCheck = blAddr - 12;
 	}
 	
 	uint32_t adrpInst = 0, adrpInstAny = 0;
@@ -120,6 +131,7 @@ static uint64_t xpf_find_pmap_tt_deallocate_reference(uint32_t n)
 		adrpAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 80, adrpInst, adrpInstAny);
 		toCheck = adrpAddr + 4;
 	}
+
 	
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, adrpAddr + 4);
 }
@@ -134,6 +146,15 @@ static uint64_t xpf_find_pmap_enter_options_addr(void)
 		*stop = true;
 	});
 	pfmetric_free(stringMetric);
+
+	if (!stringAddr) {
+		stringMetric = pfmetric_string_init("\"pmap_enter_options() pmap %p v 0x%llx\\n\"");
+		pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
+			stringAddr = vmaddr;
+			*stop = true;
+		});
+		pfmetric_free(stringMetric);
+	}
 
 	__block uint64_t pmap_enter_options_internal = 0;
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
@@ -184,9 +205,10 @@ static uint64_t xpf_find_pp_attr_table(void)
 void xpf_non_ppl_init(void)
 {
 	if (!gXPF.kernelIsArm64e) {
+		bool iOS14 = strcmp(gXPF.darwinVersion, "21.0.0") < 0;
 		xpf_item_register("kernelSymbol.pmap_tt_deallocate", xpf_find_pmap_tt_deallocate, NULL);
-		xpf_item_register("kernelSymbol.vm_first_phys", xpf_find_pmap_tt_deallocate_reference, (void*)(uint32_t)1);
-		xpf_item_register("kernelSymbol.pv_head_table", xpf_find_pmap_tt_deallocate_reference, (void*)(uint32_t)2);
+		xpf_item_register("kernelSymbol.vm_first_phys", xpf_find_pmap_tt_deallocate_reference, iOS14 ? (void*)(uint32_t)2 : (void*)(uint32_t)1);
+		xpf_item_register("kernelSymbol.pv_head_table", xpf_find_pmap_tt_deallocate_reference, iOS14 ? (void*)(uint32_t)1 : (void*)(uint32_t)2);
 		
 		xpf_item_register("kernelSymbol.vm_last_phys", xpf_find_vm_last_phys, NULL);
 		xpf_item_register("kernelSymbol.pp_attr_table", xpf_find_pp_attr_table, NULL);

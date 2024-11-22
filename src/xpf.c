@@ -18,6 +18,11 @@ bool xpf_supported_always(void)
 	return true;
 }
 
+bool xpf_supported_15up(void)
+{
+	return strcmp(gXPF.darwinVersion, "22.0.0") >= 0;
+}
+
 bool xpf_supported_15down(void)
 {
 	return strcmp(gXPF.darwinVersion, "22.0.0") < 0;
@@ -33,12 +38,18 @@ bool xpf_supported_16down(void)
 	return strcmp(gXPF.darwinVersion, "22.0.0") < 0;
 }
 
+bool xpf_supported_1516(void)
+{
+	return xpf_supported_15up() && xpf_supported_16down();
+}
+
 bool xpf_supported_arm64(void)
 {
 	return !gXPF.kernelIsArm64e;
 }
 
-bool xpf_supported_arm64_16down(void) {
+bool xpf_supported_arm64_16down(void)
+{
 	return xpf_supported_arm64() && xpf_supported_16down();
 }
 
@@ -144,7 +155,7 @@ XPFSet gBadRecoverySet = {
 
 XPFSet gSandboxSet = {
 	.name="sandbox",
-	.supported=xpf_supported_always,
+	.supported=xpf_supported_15up,
 	.metrics={
 		"kernelConstant.nsysent",
 		"kernelConstant.mach_trap_count",
@@ -163,7 +174,7 @@ XPFSet gPhysRWSet = {
 
 XPFSet gPerfKRWSet = {
 	.name="perfkrw",
-	.supported=xpf_supported_16down,
+	.supported=xpf_supported_1516,
 	.metrics={
 		"kernelSymbol.perfmon_dev_open",
 		"kernelSymbol.perfmon_devices",

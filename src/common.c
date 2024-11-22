@@ -361,6 +361,31 @@ static uint64_t xpf_find_task_crashinfo_release_ref(void)
 	});
 	pfmetric_free(corpseReleasedMetric);
 
+	if (!corpseReleasedStringAddr) {
+		// iOS 14 does not have the above log string
+		corpseReleasedMetric = pfmetric_string_init("\"corpse in flight count over-release\"");
+		pfmetric_run(gXPF.kernelStringSection, corpseReleasedMetric, ^(uint64_t vmaddr, bool *stop){
+			corpseReleasedStringAddr = vmaddr;
+			*stop = true;
+		});
+		pfmetric_free(corpseReleasedMetric);
+
+		if (!corpseReleasedStringAddr) return 0;
+
+		// iOS 14 also does not have the movz after this panic, so we look for a ret instruction before (as task_crashinfo_release_ref should be the first xref).
+		PFXrefMetric *corseReleasedXrefMetric = pfmetric_xref_init(corpseReleasedStringAddr, XREF_TYPE_MASK_REFERENCE);
+		__block uint64_t task_crashinfo_release_ref = 0;
+		pfmetric_run(gXPF.kernelTextSection, corseReleasedXrefMetric, ^(uint64_t vmaddr, bool *stop) {
+			if (pfsec_find_prev_inst(gXPF.kernelTextSection, vmaddr, 20, 0xd65f03c0, 0xffffffff)) {
+				task_crashinfo_release_ref = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
+				*stop = true;
+			}
+		});
+		pfmetric_free(corseReleasedXrefMetric);
+
+		return task_crashinfo_release_ref;
+	}
+
 	PFXrefMetric *corseReleasedXrefMetric = pfmetric_xref_init(corpseReleasedStringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t task_crashinfo_release_ref = 0;
 	pfmetric_run(gXPF.kernelTextSection, corseReleasedXrefMetric, ^(uint64_t vmaddr, bool *stop) {
@@ -450,8 +475,10 @@ static uint64_t xpf_find_task_itk_space(void)
 
 		// At this place, the first ldr that doesn't read from SP has the reference we want
 		uint64_t ldrAddr = target2;
+		// On iOS 14, the first ldr is the one for itk_space
+		bool iOS14 = strcmp(gXPF.darwinVersion, "21.0.0") < 0;
 		while (true) {
-			ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, ldrAddr+4, 0, ldrAnyInst, ldrAnyMask);
+			ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, ldrAddr + (iOS14 ? 0 : 4), 0, ldrAnyInst, ldrAnyMask);
 			arm64_register addrReg;
 			uint64_t imm = 0;
 			arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, ldrAddr), NULL, &addrReg, &imm, NULL, NULL);
@@ -510,6 +537,15 @@ static uint64_t xpf_find_vm_map_pmap(void)
 		*stop = true;
 	});
 	pfmetric_free(stringMetric);
+
+	if (!stringAddr) {
+		// Slightly different on iOS 14
+		stringMetric = pfmetric_string_init("\"userspace has control access to a \" \"kernel map %p through task %p\"");
+		pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop){
+			stringAddr = vmaddr;
+			*stop = true;
+		});
+	}
 
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t xrefAddr = 0;
@@ -969,10 +1005,24 @@ static uint64_t xpf_find_thread_machine_CpuDatap(void)
 	});
 	pfmetric_free(stringMetric);
 
+	if (!stringAddr) {
+		stringMetric = pfmetric_string_init("\"kernel_debug_early_end() not call on boot processor\"");
+		pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop) {
+			stringAddr = vmaddr;
+			*stop = true;
+		});
+		pfmetric_free(stringMetric);
+	}
+
 	__block uint64_t panicBranch = 0;
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
 	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
-		panicBranch = vmaddr - (5 * sizeof(uint32_t));
+		if (strcmp(gXPF.darwinVersion, "21.0.0") < 0) {
+			// On iOS 14 the branch xref is to the adrp before the panic call 
+			panicBranch = vmaddr - (sizeof(uint32_t));
+		} else {
+			panicBranch = vmaddr - (5 * sizeof(uint32_t));
+		}
 		*stop = true;
 	});
 	pfmetric_free(xrefMetric);
