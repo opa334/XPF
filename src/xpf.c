@@ -503,7 +503,7 @@ xpc_object_t xpf_construct_offset_dictionary(const char *sets[])
 				break;
 			}
 			else {
-				if (j == (setCount-1)) {
+				if (j == (setCount-1) && gSets[j]->supported()) {
 					xpf_set_error("Failed to find set \"%s\"", sets[i]);
 					xpc_release(offsetDictionary);
 					return NULL;
