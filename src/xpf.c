@@ -21,7 +21,7 @@ bool xpf_supported_always(void)
 // iOS 15 and above
 bool xpf_supported_15up(void)
 {
-	return strcmp(gXPF.darwinVersion, "22.0.0") >= 0;
+	return strcmp(gXPF.darwinVersion, "21.0.0") >= 0;
 }
 
 // iOS 15 and below
