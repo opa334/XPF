@@ -334,17 +334,49 @@ static uint64_t xpf_find_allproc(void)
 	pfmetric_free(shutdownwaitMetric);
 
 	PFXrefMetric *shutdownwaitXrefMetric = pfmetric_xref_init(shutdownwaitString, XREF_TYPE_MASK_REFERENCE);
-	__block uint64_t shutdownwaitXref = 0;
+	__block uint64_t beforeLdrAddr = 0;
 	pfmetric_run(gXPF.kernelTextSection, shutdownwaitXrefMetric, ^(uint64_t vmaddr, bool *stop) {
-		shutdownwaitXref = vmaddr;
+		beforeLdrAddr = vmaddr;
 		*stop = true;
 	});
 	pfmetric_free(shutdownwaitXrefMetric);
 
+	arm64_register destinationReg;
+	if (arm64_dec_add_imm(pfsec_read32(gXPF.kernelTextSection, beforeLdrAddr), &destinationReg, NULL, NULL) != 0) return 0;
+
+	if (ARM64_REG_GET_NUM(destinationReg) != 3) {
+		// If the string is not loaded into x3, we need to advance until the mov x3, <target>
+
+		uint32_t targetInsn = 0, targetMask = 0;
+		arm64_gen_mov_reg(ARM64_REG_X(3), destinationReg, &targetInsn, &targetMask);
+
+		uint64_t curAddr = beforeLdrAddr;
+		for (int i = 0; i < 200; i++) {
+			uint32_t curInsn = pfsec_read32(gXPF.kernelTextSection, curAddr);
+
+			if ((curInsn & targetMask) == targetInsn) {
+				beforeLdrAddr = curAddr;
+				break;
+			}
+
+			// If we find an unconditional branch, follow it
+			uint64_t bTarget = 0;
+			bool isBl = false;
+			if (arm64_dec_b_l(curInsn, curAddr, &bTarget, &isBl) == 0) {
+				if (!isBl) {
+					curAddr = bTarget;
+					continue;
+				}
+			}
+
+			curAddr += 4;
+		}
+	}
+
 	uint32_t ldrAny = 0, ldrAnyMask = 0;
 	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
 
-	uint64_t ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, shutdownwaitXref, 20, ldrAny, ldrAnyMask);
+	uint64_t ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, beforeLdrAddr, 20, ldrAny, ldrAnyMask);
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
 }
 
