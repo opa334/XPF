@@ -29,7 +29,9 @@ int main(int argc, char *argv[]) {
 				NULL,
 			};
 
-			uint32_t idx = 5;
+			uint32_t idx = 0;
+			while (sets[idx] != NULL) idx++;
+
 			if (xpf_set_is_supported("sandbox")) {
 				sets[idx++] = "sandbox";
 			}
