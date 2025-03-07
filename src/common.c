@@ -448,7 +448,11 @@ static uint64_t xpf_find_task_collect_crash_info(void)
 	if (!task_collect_crash_info) {
 		// On iOS 18, this call is followed by a mov w??, #0
 		pfmetric_run(gXPF.kernelTextSection, task_crashinfo_release_refXrefMetric, ^(uint64_t vmaddr, bool *stop) {
-			if ((pfsec_read32(gXPF.kernelTextSection, vmaddr + 4) & 0xFFFF0000) == 0x52800000) {
+			uint64_t imm = 0;
+			arm64_register reg;
+			arm64_dec_mov_imm(pfsec_read32(gXPF.kernelTextSection, vmaddr + 4), &reg, &imm, NULL, NULL);
+
+			if (imm == 0 && ARM64_REG_IS_W(reg)) {
 				task_collect_crash_info = pfsec_find_function_start(gXPF.kernelTextSection, vmaddr);
 				*stop = true;
 			}
