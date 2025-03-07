@@ -457,71 +457,91 @@ static uint64_t xpf_find_task_collect_crash_info(void)
 
 	pfmetric_free(task_crashinfo_release_refXrefMetric);
 
+	// Handle outlining on iOS 18.4+
+	// Bit hacky, but with a bit of wishful thinking it might stay like this
+	PFXrefMetric *task_collect_crash_infoOutlineMetric = pfmetric_xref_init(task_collect_crash_info, XREF_TYPE_MASK_JUMP);
+	pfmetric_run(gXPF.kernelTextSection, task_collect_crash_infoOutlineMetric, ^(uint64_t vmaddr, bool *stop) {
+		if ((vmaddr < task_collect_crash_info) && (vmaddr >= (task_collect_crash_info - (5 * sizeof(uint32_t))))) {
+			task_collect_crash_info = vmaddr - (2 * sizeof(uint32_t));
+			*stop = true;
+		}
+	});
+	pfmetric_free(task_collect_crash_infoOutlineMetric);
+
 	return task_collect_crash_info;
 }
 
 static uint64_t xpf_find_task_itk_space(void)
 {
-	uint64_t task_collect_crash_info = xpf_item_resolve("kernelSymbol.task_collect_crash_info");
+	__block uint64_t task_collect_crash_info = xpf_item_resolve("kernelSymbol.task_collect_crash_info");
 
 	uint32_t movzW2_1 = 0, movzW2_1Mask = 0;
 	arm64_gen_mov_imm('z', ARM64_REG_W(2), OPT_UINT64(1), OPT_UINT64(0), &movzW2_1, &movzW2_1Mask);
 
 	__block uint64_t itk_space = 0;
 	PFXrefMetric *task_collect_crash_infoXrefMetric = pfmetric_xref_init(task_collect_crash_info, XREF_TYPE_MASK_CALL);
+	__block uint64_t task_collect_crash_infoXref = 0;
+
 	pfmetric_run(gXPF.kernelTextSection, task_collect_crash_infoXrefMetric, ^(uint64_t vmaddr, bool *stop) {
 		if ((pfsec_read32(gXPF.kernelTextSection, vmaddr - 4) & movzW2_1Mask) != movzW2_1) return;
 
-		// At vmaddr + 4 there is a CBZ to some other place
-		// At that place, the next CBZ leads to the place where the actual reference we want is
-
-		uint64_t cbz1Addr = vmaddr + 4;
-		bool isCbnz = false;
-		uint64_t target1 = 0;
-		if (arm64_dec_cb_n_z(pfsec_read32(gXPF.kernelTextSection, cbz1Addr), cbz1Addr, &isCbnz, NULL, &target1) != 0) {
-			xpf_set_error("itk_space error: first branch is not cbz");
-			*stop = true;
-		}
-		if (isCbnz) {
-			// If this is not a cbz and rather a cbnz, treat the instruction after it as the cbz target
-			target1 = cbz1Addr + 4;
-		}
-
-		uint32_t cbzAnyInst = 0, cbzAnyMask = 0;
-		arm64_gen_cb_n_z(OPT_BOOL_NONE, ARM64_REG_ANY, OPT_UINT64_NONE, &cbzAnyInst, &cbzAnyMask);
-
-		uint64_t cbz2Addr = pfsec_find_next_inst(gXPF.kernelTextSection, target1, 0x20, cbzAnyInst, cbzAnyMask);
-
-		uint64_t target2 = 0;
-		if (arm64_dec_cb_n_z(pfsec_read32(gXPF.kernelTextSection, cbz2Addr), cbz2Addr, &isCbnz, NULL, &target2) != 0) {
-			xpf_set_error("itk_space error: second branch not found");
-			*stop = true;
-		}
-		if (isCbnz) {
-			// If this is not a cbz and rather a cbnz, treat the instruction after it as the cbz target
-			target2 = cbz2Addr + 4;
-		}
-
-		uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
-		arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
-
-		// At this place, the first ldr that doesn't read from SP has the reference we want
-		uint64_t ldrAddr = target2;
-		// On iOS 14, the first ldr is the one for itk_space
-		bool iOS14 = strcmp(gXPF.darwinVersion, "21.0.0") < 0;
-		while (true) {
-			ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, ldrAddr + (iOS14 ? 0 : 4), 0, ldrAnyInst, ldrAnyMask);
-			arm64_register addrReg;
-			uint64_t imm = 0;
-			arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, ldrAddr), NULL, &addrReg, &imm, NULL, NULL);
-			if (ARM64_REG_GET_NUM(addrReg) != ARM64_REG_NUM_SP) {
-				itk_space = imm;
-				*stop = true;
-				break;
-			}
-		}
+		task_collect_crash_infoXref = vmaddr;
+		*stop = true;
 	});
 	pfmetric_free(task_collect_crash_infoXrefMetric);
+
+	if (!task_collect_crash_infoXref) {
+		xpf_set_error("itk_space error: Unable to find task_collect_crash_info (%#llx) xref", task_collect_crash_info);
+		return 0;
+	}
+
+	// At vmaddr + 4 there is a CBZ to some other place
+	// At that place, the next CBZ leads to the place where the actual reference we want is
+
+	uint64_t cbz1Addr = task_collect_crash_infoXref + 4;
+	bool isCbnz = false;
+	uint64_t target1 = 0;
+	if (arm64_dec_cb_n_z(pfsec_read32(gXPF.kernelTextSection, cbz1Addr), cbz1Addr, &isCbnz, NULL, &target1) != 0) {
+		xpf_set_error("itk_space error: first branch is not cbz");
+		return 0;
+	}
+	if (isCbnz) {
+		// If this is not a cbz and rather a cbnz, treat the instruction after it as the cbz target
+		target1 = cbz1Addr + 4;
+	}
+
+	uint32_t cbzAnyInst = 0, cbzAnyMask = 0;
+	arm64_gen_cb_n_z(OPT_BOOL_NONE, ARM64_REG_ANY, OPT_UINT64_NONE, &cbzAnyInst, &cbzAnyMask);
+
+	uint64_t cbz2Addr = pfsec_find_next_inst(gXPF.kernelTextSection, target1, 0x20, cbzAnyInst, cbzAnyMask);
+
+	uint64_t target2 = 0;
+	if (arm64_dec_cb_n_z(pfsec_read32(gXPF.kernelTextSection, cbz2Addr), cbz2Addr, &isCbnz, NULL, &target2) != 0) {
+		xpf_set_error("itk_space error: second branch not found");
+		return 0;
+	}
+	if (isCbnz) {
+		// If this is not a cbz and rather a cbnz, treat the instruction after it as the cbz target
+		target2 = cbz2Addr + 4;
+	}
+
+	uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
+	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
+
+	// At this place, the first ldr that doesn't read from SP has the reference we want
+	uint64_t ldrAddr = target2;
+	uint64_t ldrEndAddr = ldrAddr + (20 * sizeof(uint32_t));
+	while (true) {
+		ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, ldrAddr, (ldrEndAddr - ldrAddr) / 4, ldrAnyInst, ldrAnyMask);
+		arm64_register addrReg;
+		uint64_t imm = 0;
+		arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, ldrAddr), NULL, &addrReg, &imm, NULL, NULL);
+		if (ARM64_REG_GET_NUM(addrReg) != ARM64_REG_NUM_SP) {
+			itk_space = imm;
+			break;
+		}
+		ldrAddr += 4;
+	}
 
 	return itk_space;
 }
