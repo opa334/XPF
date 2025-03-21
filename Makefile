@@ -1,4 +1,4 @@
-CC = clang
+CC ?= clang
 
 CHOMA_DYLIB_PATH ?= external/ios/lib
 CFLAGS = -O2
