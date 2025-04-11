@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <libkern/OSByteOrder.h>
 
 // 8-bit integers needed for CodeDirectory
 #define BIG_TO_HOST(n) _Generic((n), \
@@ -70,7 +71,7 @@
     applier(arch, cpusubtype); \
     applier(arch, offset); \
     applier(arch, size); \
-    applier(arch, align); \
+    applier(arch, align);
 
 #define FAT_ARCH_64_APPLY_BYTE_ORDER(arch, applier) \
     applier(arch, cputype); \
@@ -78,7 +79,7 @@
     applier(arch, offset); \
     applier(arch, size); \
     applier(arch, align); \
-    applier(arch, reserved); \
+    applier(arch, reserved);
 
 #define MACH_HEADER_APPLY_BYTE_ORDER(mh, applier) \
     applier(mh, magic); \
@@ -136,6 +137,18 @@
     applier(cd, scatterOffset); \
     applier(cd, teamOffset);
 
+#define SEGMENT_COMMAND_APPLY_BYTE_ORDER(sc, applier) \
+    applier(sc, cmd); \
+    applier(sc, cmdsize); \
+    applier(sc, fileoff); \
+    applier(sc, filesize); \
+    applier(sc, vmaddr); \
+    applier(sc, vmsize); \
+    applier(sc, flags); \
+    applier(sc, initprot); \
+    applier(sc, maxprot); \
+    applier(sc, nsects);
+
 #define SEGMENT_COMMAND_64_APPLY_BYTE_ORDER(sc64, applier) \
     applier(sc64, cmd); \
     applier(sc64, cmdsize); \
@@ -147,6 +160,16 @@
     applier(sc64, initprot); \
     applier(sc64, maxprot); \
     applier(sc64, nsects);
+
+#define SECTION_APPLY_BYTE_ORDER(sc, applier) \
+    applier(sc, addr); \
+    applier(sc, align); \
+    applier(sc, flags); \
+    applier(sc, nreloc); \
+    applier(sc, offset); \
+    applier(sc, reserved1); \
+    applier(sc, reserved2); \
+    applier(sc, size);
 
 #define SECTION_64_APPLY_BYTE_ORDER(sc64, applier) \
     applier(sc64, addr); \
@@ -165,7 +188,7 @@
     applier(fse, vmaddr); \
     applier(fse, fileoff); \
     applier(fse, entry_id.offset); \
-    applier(fse, reserved); \
+    applier(fse, reserved);
 
 #define SYMTAB_COMMAND_APPLY_BYTE_ORDER(symt, applier) \
     applier(symt, cmd); \
@@ -174,6 +197,13 @@
     applier(symt, stroff); \
     applier(symt, strsize); \
     applier(symt, symoff);
+
+#define NLIST_APPLY_BYTE_ORDER(nl, applier) \
+    applier(nl, n_un.n_strx); \
+    applier(nl, n_type); \
+    applier(nl, n_sect); \
+    applier(nl, n_desc); \
+    applier(nl, n_value);
 
 #define NLIST_64_APPLY_BYTE_ORDER(nl, applier) \
     applier(nl, n_un.n_strx); \

@@ -39,6 +39,12 @@ Fat *fat_init_from_path(const char *filePath);
 // Find macho with cputype and cpusubtype in Fat, returns NULL if not found
 MachO *fat_find_slice(Fat *fat, cpu_type_t cputype, cpu_subtype_t cpusubtype);
 
+// Enumerate all slices contained in Fat
+void fat_enumerate_slices(Fat *fat, void (^enumBlock)(MachO *macho, bool *stop));
+
+// If Fat only has a single slice, return it
+MachO *fat_get_single_slice(Fat *fat);
+
 // Create a Fat structure from an array of MachO structures
 Fat *fat_create_for_macho_array(char *firstInputPath, MachO **machoArray, int machoArrayCount);
 
