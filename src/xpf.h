@@ -56,6 +56,7 @@ typedef struct s_XPF {
 	uint64_t kernelEntry;
 
 	PFSection *kernelTextSection;
+	PFSection *kernelPinstSection;
 	PFSection *kernelPPLTextSection;
 	PFSection *kernelStringSection;
 	PFSection *kernelConstSection;

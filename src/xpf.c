@@ -293,6 +293,7 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 	gXPF.kernelIsFileset = macho_get_filetype(gXPF.kernel) == MH_FILESET;
 
 	gXPF.kernelTextSection = xpf_pfsec_init("com.apple.kernel", "__TEXT_EXEC", "__text");
+	gXPF.kernelPinstSection = xpf_pfsec_init("com.apple.kernel", "__LAST", "__pinst");
 	gXPF.kernelPPLTextSection = xpf_pfsec_init("com.apple.kernel", "__PPLTEXT", "__text");
 	gXPF.kernelStringSection = xpf_pfsec_init("com.apple.kernel", "__TEXT", "__cstring");
 	gXPF.kernelConstSection = xpf_pfsec_init("com.apple.kernel", "__TEXT", "__const");
