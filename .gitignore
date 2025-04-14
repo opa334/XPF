@@ -1,6 +1,7 @@
 .DS_Store
 xpf_test_macos
 xpf_test_ios
-libxpf.dylib
+libxpf_ios.dylib
 libxpf_macos.dylib
 /kernels
+external/include
