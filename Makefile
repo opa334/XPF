@@ -1,15 +1,15 @@
 CC = clang
 
-DYNLINK_CHOMA ?= 0
-CHOMA_PATH    ?= external/ChOma
-CFLAGS         = -O2 -framework Foundation -I$(CHOMA_PATH)/include
-CFLAGS_MACOS   = $(CFLAGS)
-CFLAGS_IOS     = $(CFLAGS) -isysroot $(shell xcrun --sdk iphoneos --show-sdk-path) -miphoneos-version-min=15.0 -arch arm64 -arch arm64e
-LDFLAGS        = -lcompression
+CHOMA_DYLIB_PATH ?= 0
+CHOMA_PATH       ?= external/ChOma
+CFLAGS            = -O2 -framework Foundation -I$(CHOMA_PATH)/include
+CFLAGS_MACOS      = $(CFLAGS)
+CFLAGS_IOS        = $(CFLAGS) -isysroot $(shell xcrun --sdk iphoneos --show-sdk-path) -miphoneos-version-min=15.0 -arch arm64 -arch arm64e
+LDFLAGS           = -lcompression
 
 all: output/macos/libxpf.dylib output/ios/libxpf.dylib output/macos/xpf_test output/ios/xpf_test
 
-ifeq ($(DYNLINK_CHOMA), 1)
+ifneq ($(CHOMA_DYLIB_PATH), 0)
 CHOMA_DEP = 
 LDFLAGS  += -L$(CHOMA_DYLIB_PATH) -lchoma
 else
