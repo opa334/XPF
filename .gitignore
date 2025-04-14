@@ -4,4 +4,4 @@ xpf_test_ios
 libxpf_ios.dylib
 libxpf_macos.dylib
 /kernels
-external/include
+output

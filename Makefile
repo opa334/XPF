@@ -1,55 +1,38 @@
 CC = clang
 
 DYNLINK_CHOMA ?= 0
-CHOMA_PATH ?= $(shell pwd)/external/ChOma
-CFLAGS = -O2 -framework Foundation
-CFLAGS_MACOS = -Iexternal/include
-CFLAGS_IOS = -Iexternal/include -isysroot $(shell xcrun --sdk iphoneos --show-sdk-path) -miphoneos-version-min=15.0 -arch arm64 -arch arm64e
-LDFLAGS = -lcompression
+CHOMA_PATH    ?= external/ChOma
+CFLAGS         = -O2 -framework Foundation -I$(CHOMA_PATH)/include
+CFLAGS_MACOS   = $(CFLAGS)
+CFLAGS_IOS     = $(CFLAGS) -isysroot $(shell xcrun --sdk iphoneos --show-sdk-path) -miphoneos-version-min=15.0 -arch arm64 -arch arm64e
+LDFLAGS        = -lcompression
 
-all: external/include libxpf_macos.dylib libxpf_ios.dylib xpf_test_macos xpf_test_ios
-
-external/include:
-	@mkdir -p external/include
-	@ln -s $(CHOMA_PATH)/src external/include/choma
+all: output/macos/libxpf.dylib output/ios/libxpf.dylib output/macos/xpf_test output/ios/xpf_test
 
 ifeq ($(DYNLINK_CHOMA), 1)
+CHOMA_DEP = 
+LDFLAGS  += -L$(CHOMA_DYLIB_PATH) -lchoma
+else
+CHOMA_DEP = $(CHOMA_PATH)/src/*.c
+endif 
 
-libxpf_macos.dylib: external/include $(wildcard src/*.c external/lib/libchoma.a)
-	$(CC) $(CFLAGS) $(CFLAGS_MACOS) $(LDFLAGS) -dynamiclib -install_name @loader_path/libxpf_macos.dylib -o $@ $(filter %.c %.a, $^)
+output/macos/libxpf.dylib: $(wildcard src/*.c) $(CHOMA_DEP)
+	@mkdir -p $(shell dirname $@)
+	$(CC) $(CFLAGS_MACOS) $(LDFLAGS) -dynamiclib -install_name @loader_path/libxpf.dylib -o $@ $^
 
-libxpf_ios.dylib: external/include $(wildcard src/*.c external/lib/libchoma.a)
-	$(CC) $(CFLAGS) $(CFLAGS_IOS) $(LDFLAGS) -dynamiclib -L$(CHOMA_DYLIB_PATH) -lchoma -install_name @loader_path/libxpf.dylib -o $@ $(filter %.c %.a, $^)
+output/ios/libxpf.dylib: $(wildcard src/*.c) $(CHOMA_DEP)
+	@mkdir -p $(shell dirname $@)
+	$(CC) $(CFLAGS_IOS) $(LDFLAGS) -dynamiclib -install_name @loader_path/libxpf.dylib -o $@ $^
 	ldid -S $@
 
-xpf_test_macos: external/include $(wildcard src/cli/*.c external/lib/libchoma.a)
-	$(CC) $(CFLAGS) $(CFLAGS_MACOS) $(LDFLAGS) -L. -lxpf_macos -o $@ $(filter %.c %.a, $^)
+output/macos/xpf_test: $(wildcard src/cli/*.c)
+	@mkdir -p $(shell dirname $@)
+	$(CC) $(CFLAGS_MACOS) $(LDFLAGS) -L$(shell dirname $@) -lxpf -o $@ $^
 
-xpf_test_ios: external/include $(wildcard src/cli/*.c external/lib/libchoma.a)
-	$(CC) $(CFLAGS) $(CFLAGS_IOS) $(LDFLAGS) -L. -lxpf_ios -o $@ $(filter %.c %.a, $^)
+output/ios/xpf_test: $(wildcard src/cli/*.c)
+	@mkdir -p $(shell dirname $@)
+	$(CC) $(CFLAGS_IOS) $(LDFLAGS) -L$(shell dirname $@) -lxpf -o $@ $^
 	@ldid -S $@
-
-else
-
-libxpf_macos.dylib: external/include $(wildcard src/*.c $(CHOMA_PATH)/src/*.c)
-	$(CC) $(CFLAGS) $(CFLAGS_MACOS) $(LDFLAGS) -dynamiclib -install_name @loader_path/libxpf_macos.dylib -o $@ $(filter %.c %.a, $^)
-
-libxpf_ios.dylib: external/include $(wildcard src/*.c $(CHOMA_PATH)/src/*.c)
-	$(CC) $(CFLAGS) $(CFLAGS_IOS) $(LDFLAGS) -dynamiclib -install_name @loader_path/libxpf.dylib -o $@ $(filter %.c %.a, $^)
-	@ldid -S $@
-
-xpf_test_macos: external/include $(wildcard src/cli/*.c external/lib/libchoma.a)
-	$(CC) $(CFLAGS) $(CFLAGS_MACOS) $(LDFLAGS) -L. -lxpf_macos -o $@ $(filter %.c %.a, $^)
-
-xpf_test_ios: external/include $(wildcard src/cli/*.c)
-	$(CC) $(CFLAGS) $(CFLAGS_IOS) $(LDFLAGS) -L. -lxpf_ios -o $@ $(filter %.c %.a, $^)
-	@ldid -S $@
-
-endif
 
 clean:
-	@rm -rf external/include
-	@rm -f libxpf.dylib
-	@rm -f libxpf_macos.dylib
-	@rm -f xpf_test_ios
-	@rm -f xpf_test_macos
+	@rm -rf output
