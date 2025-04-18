@@ -66,6 +66,7 @@ typedef struct s_XPF {
 	PFSection *kernelPrelinkTextSection;
 	PFSection *kernelPLKTextSection;
 	PFSection *kernelKmodInfoSection;
+	PFSection *kernelPrelinkInfoSection;
 	PFSection *kernelBootdataInit;
 	PFSection *kernelAMFITextSection;
 	PFSection *kernelAMFIStringSection;

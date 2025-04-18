@@ -313,6 +313,7 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 		gXPF.kernelPrelinkTextSection = xpf_pfsec_init(NULL, "__PRELINK_TEXT", "__text");
 		gXPF.kernelPLKTextSection = xpf_pfsec_init(NULL, "__PLK_TEXT_EXEC", "__text");
 		gXPF.kernelKmodInfoSection = xpf_pfsec_init(NULL, "__PRELINK_INFO", "__kmod_info");
+		gXPF.kernelPrelinkInfoSection = xpf_pfsec_init(NULL, "__PRELINK_INFO", "__info");
 	}
 
 	gXPF.kernelBase = macho_get_base_address(gXPF.kernel);
