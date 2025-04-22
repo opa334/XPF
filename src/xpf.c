@@ -4,7 +4,6 @@
 #include <choma/MachOByteOrder.h>
 #include <choma/BufferedStream.h>
 #include <mach/machine.h>
-#include <sys/_types/_null.h>
 #include "xpf.h"
 #include "decompress.h"
 
@@ -257,7 +256,8 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 	}
 
 	MemoryStream *stream = NULL;
-	if (LITTLE_TO_HOST(*(uint32_t *)(gXPF.mappedKernel)) == MH_MAGIC_64) {
+	if (LITTLE_TO_HOST(*(uint32_t *)(gXPF.mappedKernel)) == MH_MAGIC_64
+		|| (*(uint32_t *)(gXPF.mappedKernel)) == FAT_CIGAM) {
 		stream = buffered_stream_init_from_buffer_nocopy(gXPF.mappedKernel, gXPF.kernelSize, 0);
 	}
 	else {
