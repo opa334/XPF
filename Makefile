@@ -1,4 +1,4 @@
-CC = clang
+CC ?= clang
 
 CHOMA_DYLIB_PATH ?= 0
 CHOMA_PATH       ?= external/ChOma
