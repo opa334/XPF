@@ -47,6 +47,9 @@ int main(int argc, char *argv[]) {
 			if (xpf_set_is_supported("arm64kcall")) {
 				sets[idx++] = "arm64kcall"; 
 			}
+			if (xpf_set_is_supported("trigon")) {
+				sets[idx++] = "trigon"; 
+			}
 
 			xpc_object_t serializedSystemInfo = xpf_construct_offset_dictionary((const char **)sets);
 			if (serializedSystemInfo) {

@@ -57,6 +57,11 @@ bool xpf_arm64_kcall_supported(void)
 	return xpf_supported_arm64() && xpf_supported_16down();
 }
 
+bool xpf_trigon_supported(void)
+{
+	return gXPF.kernelIsArm64e && xpf_supported_15up();
+}
+
 XPFSet gBaseSet = {
 	.name="base",
 	.supported=xpf_supported_always,
@@ -211,6 +216,15 @@ XPFSet gArm64KcallSet = {
 	},
 };
 
+XPFSet gTrigonSet = {
+	.name="trigon",
+	.supported=xpf_trigon_supported,
+	.metrics={
+		"kernelSymbol.iorvbar",
+		NULL
+	}
+};
+
 XPFSet *gSets[] = {
 	&gBaseSet,
 	&gTranslationSet,
@@ -224,6 +238,7 @@ XPFSet *gSets[] = {
 	&gPerfKRWSet,
 	&gDevModeSet,
 	&gArm64KcallSet,
+	&gTrigonSet,
 };
 
 XPF gXPF = { 0 };

@@ -1164,6 +1164,27 @@ static uint64_t xpf_find_thread_machine_contextData(void)
 	return machine_contextData;
 }
 
+static uint64_t xpf_find_iorvbar(void)
+{
+	uint32_t inst[1] = {
+		0xd510109f, // msr OSLAR_EL1, xzr
+	};
+	uint32_t mask[1] = {
+		0xffffffff,
+	};
+
+	__block uint64_t iorvbar = 0;
+	PFPatternMetric *patternMetric = pfmetric_pattern_init(inst, mask, sizeof(inst), sizeof(uint32_t));
+	pfmetric_run(gXPF.kernelTextSection, patternMetric, ^(uint64_t vmaddr, bool *stop) {
+		// IORVBAR is always page-aligned, and the instruction we look for is always at an offset of +0x400
+		if ((vmaddr & 0x3FFF) == 0x400) {
+			iorvbar = vmaddr & ~0x3FFF;
+			*stop = true;
+		}
+	});
+	return iorvbar;
+}
+
 void xpf_common_init(void)
 {
 	xpf_item_register("kernelSymbol.start_first_cpu", xpf_find_start_first_cpu, NULL);
@@ -1223,4 +1244,6 @@ void xpf_common_init(void)
 	xpf_item_register("kernelStruct.thread.machine_CpuDatap", xpf_find_thread_machine_CpuDatap, NULL);
 	xpf_item_register("kernelStruct.thread.machine_kstackptr", xpf_find_thread_machine_kstackptr, NULL);
 	xpf_item_register("kernelStruct.thread.machine_contextData", xpf_find_thread_machine_contextData, NULL);
+
+	xpf_item_register("kernelSymbol.iorvbar", xpf_find_iorvbar, NULL);
 }
