@@ -970,13 +970,22 @@ static uint64_t xpf_find_developer_mode_enabled(void)
 	arm64_gen_ldr_lit(ARM64_REG_ANY, OPT_UINT64_NONE, OPT_UINT64_NONE, &ldrLitAnyInst, &ldrLitAnyMask);
 
 	__block uint64_t developer_mode_candidate = 0;
-	uint64_t refAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, afterRefAddr, 25, ldrLitAnyInst, ldrLitAnyMask);
-	if (refAddr) {
-		arm64_dec_ldr_lit(pfsec_read32(gXPF.kernelTextSection, refAddr), refAddr, &developer_mode_candidate, NULL);
+	uint64_t ldrLitAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, afterRefAddr, 25, ldrLitAnyInst, ldrLitAnyMask);
+	uint64_t adrpAddAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, afterRefAddr, 50, adrpAnyInst, adrpAnyMask);
+	// Depending on the version, developer_mode_storage can either be loaded via adrp+add+ldrb or just via a literal ldr
+	
+	// Literal ldr:
+	// arm64 16.4, 16.5, 16.6, potentially later versions aswell
+	// adrp+add:
+	// everything else
+
+	// If we find an adrp+add closer than an ldr literal, we need to take that instead
+	// This is because there is a false positive ldr literal on 16.0 arm64 right before the adrp+add
+	if (!adrpAddAddr || ldrLitAddr > adrpAddAddr) {
+		arm64_dec_ldr_lit(pfsec_read32(gXPF.kernelTextSection, ldrLitAddr), ldrLitAddr, &developer_mode_candidate, NULL);
 	}
 	else {
-		refAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, afterRefAddr, 50, adrpAnyInst, adrpAnyMask);
-		developer_mode_candidate = pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, refAddr + 4);
+		developer_mode_candidate = pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, adrpAddAddr + 4);
 	}
 
 	__block uint64_t developer_mode_enabled = false;
