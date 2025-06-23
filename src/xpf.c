@@ -470,15 +470,25 @@ uint64_t xpfsec_decode_pointer(PFSection *section, uint64_t vmaddr, uint64_t val
 	return value;
 }
 
-bool xpf_set_is_supported(const char *name)
+XPFSet *xpf_find_set(const char *name, bool *foundUnsupported)
 {
 	uint32_t setCount = (sizeof(gSets)/sizeof(XPFSet*));
 	for (int i = 0; i < setCount; i++) {
 		if (!strcmp(gSets[i]->name, name)) {
-			if (gSets[i]->supported()) return true;
+			if (!gSets[i]->supported()) {
+				if (foundUnsupported) *foundUnsupported = true;
+				continue;
+			}
+			return gSets[i];
 		}
 	}
 	return false;
+}
+
+bool xpf_set_is_supported(const char *name)
+{
+	XPFSet *set = xpf_find_set(name, NULL);
+	return set != NULL;
 }
 
 int xpf_offset_dictionary_add_set(xpc_object_t xdict, XPFSet *set)
@@ -515,23 +525,24 @@ xpc_object_t xpf_construct_offset_dictionary(const char *sets[])
 	uint32_t setCount = (sizeof(gSets)/sizeof(XPFSet*));
 
 	for (int i = 0; sets[i]; i++) {
-		for (int j = 0; j < setCount; j++) {
-			if (!strcmp(gSets[j]->name, sets[i])) {
-				if (!gSets[j]->supported()) continue;
-				int r = xpf_offset_dictionary_add_set(offsetDictionary, gSets[j]);
-				if (r != 0) {
-					xpc_release(offsetDictionary);
-					return NULL;
-				}
-				break;
+		bool foundUnsupported = false;
+		XPFSet *set = xpf_find_set(sets[i], &foundUnsupported);
+		if (set) {
+			int r = xpf_offset_dictionary_add_set(offsetDictionary, set);
+			if (r != 0) {
+				xpc_release(offsetDictionary);
+				return NULL;
 			}
-			else {
-				if (j == (setCount-1) && gSets[j]->supported()) {
-					xpf_set_error("Failed to find set \"%s\"", sets[i]);
-					xpc_release(offsetDictionary);
-					return NULL;
-				}
-			}
+		}
+		else if (foundUnsupported) {
+			xpf_set_error("Set \"%s\" is unsupported by this device", sets[i]);
+			xpc_release(offsetDictionary);
+			return NULL;
+		}
+		else {
+			xpf_set_error("Failed to find set \"%s\"", sets[i]);
+			xpc_release(offsetDictionary);
+			return NULL;
 		}
 	}
 
