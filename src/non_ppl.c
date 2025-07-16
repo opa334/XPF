@@ -24,7 +24,7 @@ static uint64_t xpf_find_pmap_image4_trust_caches(void)
 		0xffe0fc1f,
 		0xff00001f,
 	};
-	
+
 	PFPatternMetric *metric = pfmetric_pattern_init(&inst, &mask, sizeof(inst), sizeof(uint32_t));
 	__block uint64_t found = 0;
 	pfmetric_run(gXPF.kernelTextSection, metric, ^(uint64_t vmaddr, bool *stop) {
@@ -32,17 +32,14 @@ static uint64_t xpf_find_pmap_image4_trust_caches(void)
 		*stop = true;
 	});
 	pfmetric_free(metric);
+	XPF_ASSERT(found);
 	
-	if(found) {
-		uint32_t adrpInst = 0, adrpInstAny = 0;
-		arm64_gen_adr_p(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_REG_ANY, &adrpInst, &adrpInstAny);
-		uint64_t adrpAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, found, 25, adrpInst, adrpInstAny);
-		if (adrpAddr) {
-			return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, adrpAddr + 4);
-		}
-	}
-	
-	return 0;
+	uint32_t adrpInst = 0, adrpInstAny = 0;
+	arm64_gen_adr_p(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_REG_ANY, &adrpInst, &adrpInstAny);
+	uint64_t adrpAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, found, 25, adrpInst, adrpInstAny);
+	XPF_ASSERT(adrpAddr);
+
+	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, adrpAddr + 4);
 }
 
 static uint64_t xpf_find_trust_cache_rt(void)
@@ -54,6 +51,7 @@ static uint64_t xpf_find_trust_cache_rt(void)
 		*stop = true;
 	});
 	pfmetric_free(stringMetric);
+	XPF_ASSERT(non_ppl_trust_cache_rt_stringAddr);
 	
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(non_ppl_trust_cache_rt_stringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t non_ppl_trust_cache_rt = 0;
@@ -62,6 +60,7 @@ static uint64_t xpf_find_trust_cache_rt(void)
 		*stop = true;
 	});
 	pfmetric_free(xrefMetric);
+	XPF_ASSERT(non_ppl_trust_cache_rt);
 	
 	// 2nd adrp
 	uint32_t adrpInst = 0, adrpInstAny = 0;
@@ -73,6 +72,7 @@ static uint64_t xpf_find_trust_cache_rt(void)
 		adrpAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 80, adrpInst, adrpInstAny);
 		toCheck = adrpAddr + 4;
 	}
+	XPF_ASSERT(adrpAddr);
 	
 	return pfsec_read_pointer(gXPF.kernelDataConstSection, pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, adrpAddr + 4));
 }
@@ -96,6 +96,8 @@ static uint64_t xpf_find_pmap_tt_deallocate(void)
 		});
 		pfmetric_free(stringMetric);
 	}
+
+	XPF_ASSERT(pmap_tt_deallocate_stringAddr);
 	
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(pmap_tt_deallocate_stringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t pmap_tt_deallocate = 0;
@@ -111,6 +113,7 @@ static uint64_t xpf_find_pmap_tt_deallocate(void)
 static uint64_t xpf_find_pmap_tt_deallocate_reference(uint32_t n)
 {
 	uint64_t pmap_tt_deallocate = xpf_item_resolve("kernelSymbol.pmap_tt_deallocate");
+	XPF_ASSERT(pmap_tt_deallocate);
 	
 	uint32_t blAny = 0, blAnyMask = 0;
 	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAny, &blAnyMask);
@@ -121,6 +124,7 @@ static uint64_t xpf_find_pmap_tt_deallocate_reference(uint32_t n)
 		blAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 80, blAny, blAnyMask);
 		toCheck = blAddr - 12;
 	}
+	XPF_ASSERT(blAddr);
 	
 	uint32_t adrpInst = 0, adrpInstAny = 0;
 	arm64_gen_adr_p(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_REG_ANY, &adrpInst, &adrpInstAny);
@@ -131,7 +135,7 @@ static uint64_t xpf_find_pmap_tt_deallocate_reference(uint32_t n)
 		adrpAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 80, adrpInst, adrpInstAny);
 		toCheck = adrpAddr + 4;
 	}
-
+	XPF_ASSERT(adrpAddr);
 	
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, adrpAddr + 4);
 }
@@ -155,6 +159,7 @@ static uint64_t xpf_find_pmap_enter_options_addr(void)
 		});
 		pfmetric_free(stringMetric);
 	}
+	XPF_ASSERT(stringAddr);
 
 	__block uint64_t pmap_enter_options_internal = 0;
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
@@ -178,6 +183,7 @@ static uint64_t xpf_find_pmap_remove_options(void)
 		*stop = true;
 	});
 	pfmetric_free(stringMetric);
+	XPF_ASSERT(stringAddr);
 
 	__block uint64_t pmap_remove_options_internal = 0;
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);

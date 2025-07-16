@@ -63,6 +63,7 @@ static uint64_t xpf_find_hw_lck_ticket_reserve_orig_allow_invalid(void)
 	arm64_gen_adr_p(OPT_BOOL(false), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_REG_ANY, &adrAny, &adrAnyMask);
 
 	uint64_t hw_lck_ticket_reserve_orig_allow_invalid_signed = xpf_item_resolve("kernelGadget.hw_lck_ticket_reserve_orig_allow_invalid_signed");
+	XPF_ASSERT(hw_lck_ticket_reserve_orig_allow_invalid_signed);
 	return pfsec_find_prev_inst(gXPF.kernelTextSection, hw_lck_ticket_reserve_orig_allow_invalid_signed, 40, adrAny, adrAnyMask);
 }
 
@@ -234,7 +235,9 @@ static uint64_t xpf_find_ml_sign_thread_state(void)
 
 static uint64_t xpf_find_thread_recover(void)
 {
-	uint32_t strInst = pfsec_read32(gXPF.kernelTextSection, xpf_item_resolve("kernelGadget.hw_lck_ticket_reserve_orig_allow_invalid_signed"));
+	uint64_t hw_lck_ticket_reserve_orig_allow_invalid_signed = xpf_item_resolve("kernelGadget.hw_lck_ticket_reserve_orig_allow_invalid_signed");
+	XPF_ASSERT(hw_lck_ticket_reserve_orig_allow_invalid_signed);
+	uint32_t strInst = pfsec_read32(gXPF.kernelTextSection, hw_lck_ticket_reserve_orig_allow_invalid_signed);
 	uint64_t imm = 0;
 	arm64_dec_str_imm(strInst, NULL, NULL, &imm, NULL, NULL);
 	return imm;

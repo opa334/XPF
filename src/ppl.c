@@ -35,6 +35,7 @@ static uint64_t xpf_find_ppl_dispatch_section(void)
 static uint64_t xpf_find_ppl_enter(void)
 {
 	uint64_t ppl_dispatch_section = xpf_item_resolve("kernelSymbol.ppl_dispatch_section");
+	XPF_ASSERT(ppl_dispatch_section);
 	__block uint64_t ppl_enter = 0;
 	arm64_dec_b_l(pfsec_read32(gXPF.kernelTextSection, ppl_dispatch_section+4), ppl_dispatch_section+4, &ppl_enter, NULL);
 	return ppl_enter;
@@ -43,6 +44,7 @@ static uint64_t xpf_find_ppl_enter(void)
 static uint64_t xpf_find_ppl_bootstrap_dispatch(void)
 {
 	uint64_t ppl_enter = xpf_item_resolve("kernelSymbol.ppl_enter");
+	XPF_ASSERT(ppl_enter);
 
 	uint32_t cbzAny = 0, cbzAnyMask = 0;
 	arm64_gen_cb_n_z(OPT_BOOL(false), ARM64_REG_ANY, OPT_UINT64_NONE, &cbzAny, &cbzAnyMask);
@@ -57,18 +59,18 @@ static uint64_t xpf_find_ppl_bootstrap_dispatch(void)
 		uint32_t bCondAnyInst = 0, bCondAnyMask = 0;
 		arm64_gen_b_c_cond(OPT_BOOL(false), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_COND_ANY, &bCondAnyInst, &bCondAnyMask);
 		uint64_t bcondPPLDispatchAddr = pfsec_find_next_inst(gXPF.kernelTextSection, ppl_enter, 30, bCondAnyInst, bCondAnyMask);
-		if (bcondPPLDispatchAddr) {
-			uint64_t ppl_bootstrap_dispatch = 0;
-			arm64_dec_b_c_cond(pfsec_read32(gXPF.kernelTextSection, bcondPPLDispatchAddr), bcondPPLDispatchAddr, &ppl_bootstrap_dispatch, NULL, NULL);
-			return ppl_bootstrap_dispatch;
-		}
+		XPF_ASSERT(bcondPPLDispatchAddr);
+
+		uint64_t ppl_bootstrap_dispatch = 0;
+		arm64_dec_b_c_cond(pfsec_read32(gXPF.kernelTextSection, bcondPPLDispatchAddr), bcondPPLDispatchAddr, &ppl_bootstrap_dispatch, NULL, NULL);
+		return ppl_bootstrap_dispatch;
 	}
-	return 0;
 }
 
 static uint64_t xpf_find_ppl_handler_table(void)
 {
 	uint64_t ppl_bootstrap_dispatch = xpf_item_resolve("kernelSymbol.ppl_bootstrap_dispatch");
+	XPF_ASSERT(ppl_bootstrap_dispatch);
 
 	uint32_t addAny = 0, addAnyMask = 0;
 	arm64_gen_add_imm(ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &addAny, &addAnyMask);
@@ -80,12 +82,14 @@ static uint64_t xpf_find_ppl_handler_table(void)
 static uint64_t xpf_find_ppl_routine(uint32_t idx)
 {
 	uint64_t ppl_handler_table = xpf_item_resolve("kernelSymbol.ppl_handler_table");
+	XPF_ASSERT(ppl_handler_table);
 	return pfsec_read_pointer(gXPF.kernelDataConstSection, ppl_handler_table + (sizeof(uint64_t) * idx));
 }
 
 static uint64_t xpf_find_ppl_dispatch_func(uint32_t idx)
 {
 	uint64_t ppl_dispatch_section = xpf_item_resolve("kernelSymbol.ppl_dispatch_section");
+	XPF_ASSERT(ppl_dispatch_section);
 
 	uint32_t movToFind = 0, movMaskToFind = 0;
 	arm64_gen_mov_imm('z', ARM64_REG_X(15), OPT_UINT64(idx), OPT_UINT64(0), &movToFind, &movMaskToFind);
@@ -96,6 +100,7 @@ static uint64_t xpf_find_ppl_dispatch_func(uint32_t idx)
 static uint64_t xpf_find_pmap_image4_trust_caches(void)
 {
 	uint64_t pmap_lookup_in_loaded_trust_caches_internal = xpf_item_resolve("kernelSymbol.pmap_lookup_in_loaded_trust_caches_internal");
+	XPF_ASSERT(pmap_lookup_in_loaded_trust_caches_internal);
 
 	uint32_t ldrLitAny = 0, ldrLitAnyMask = 0;
 	arm64_gen_ldr_lit(ARM64_REG_ANY, OPT_UINT64_NONE, OPT_UINT64_NONE, &ldrLitAny, &ldrLitAnyMask);
@@ -131,11 +136,14 @@ static uint64_t xpf_find_pmap_image4_trust_caches(void)
 static uint64_t xpf_find_pmap_query_trust_cache_safe(void)
 {
 	uint64_t pmap_lookup_in_loaded_trust_caches_internal = xpf_item_resolve("kernelSymbol.pmap_lookup_in_loaded_trust_caches_internal");
+	XPF_ASSERT(pmap_lookup_in_loaded_trust_caches_internal);
 
 	uint32_t blAny = 0, blAnyMask = 0;
 	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAny, &blAnyMask);
 
 	uint64_t blAddr = pfsec_find_next_inst(gXPF.kernelPPLTextSection, pmap_lookup_in_loaded_trust_caches_internal, 30, blAny, blAnyMask);
+	XPF_ASSERT(blAddr);
+
 	uint32_t blInst = pfsec_read32(gXPF.kernelPPLTextSection, blAddr);
 
 	uint64_t pmap_query_trust_cache_safe = 0;
@@ -146,10 +154,12 @@ static uint64_t xpf_find_pmap_query_trust_cache_safe(void)
 static uint64_t xpf_find_ppl_trust_cache_rt(void)
 {
 	uint64_t pmap_query_trust_cache_safe = xpf_item_resolve("kernelSymbol.pmap_query_trust_cache_safe");
+	XPF_ASSERT(pmap_query_trust_cache_safe);
 
 	uint32_t pacMovInst = 0, pacMovMask = 0;
 	arm64_gen_mov_imm('z', ARM64_REG_ANY, OPT_UINT64(0x6653), OPT_UINT64(0), &pacMovInst, &pacMovMask);
 	uint64_t pacMovAddr = pfsec_find_next_inst(gXPF.kernelPPLTextSection, pmap_query_trust_cache_safe, 50, pacMovInst, pacMovMask);
+	XPF_ASSERT(pacMovAddr);
 
 	uint32_t addX0AnyInst = 0, addX0AnyMask = 0;
 	arm64_gen_add_imm(ARM64_REG_X(0), ARM64_REG_ANY, OPT_UINT64_NONE, &addX0AnyInst, &addX0AnyMask);
@@ -167,6 +177,7 @@ static uint64_t xpf_find_pmap_pin_kernel_pages(void)
 		*stop = true;
 	});
 	pfmetric_free(stringMetric);
+	XPF_ASSERT(pmap_pin_kernel_pages_stringAddr);
 
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(pmap_pin_kernel_pages_stringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t pmap_pin_kernel_pages = 0;
@@ -175,6 +186,7 @@ static uint64_t xpf_find_pmap_pin_kernel_pages(void)
 		*stop = true;
 	});
 	pfmetric_free(xrefMetric);
+	XPF_ASSERT(pmap_pin_kernel_pages);
 
 	return pmap_pin_kernel_pages;
 }
@@ -182,6 +194,7 @@ static uint64_t xpf_find_pmap_pin_kernel_pages(void)
 static uint64_t xpf_find_pmap_pin_kernel_pages_reference(uint32_t idx)
 {
 	uint64_t pmap_pin_kernel_pages = xpf_item_resolve("kernelSymbol.pmap_pin_kernel_pages");
+	XPF_ASSERT(pmap_pin_kernel_pages);
 
 	uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
 	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
@@ -209,12 +222,15 @@ static uint64_t xpf_find_pmap_pin_kernel_pages_reference(uint32_t idx)
 static uint64_t xpf_find_pmap_enter_pv(void)
 {
 	PFStringMetric *stringMetric = pfmetric_string_init("pmap_enter_pv");
+	XPF_ASSERT(stringMetric);
+
 	__block uint64_t pmap_enter_pv_stringAddr = 0;
 	pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop){
 		pmap_enter_pv_stringAddr = vmaddr;
 		*stop = true;
 	});
 	pfmetric_free(stringMetric);
+	XPF_ASSERT(pmap_enter_pv_stringAddr);
 
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(pmap_enter_pv_stringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t pmap_enter_pv = 0;
@@ -230,17 +246,20 @@ static uint64_t xpf_find_pmap_enter_pv(void)
 static uint64_t xpf_find_pv_head_table(void)
 {
 	uint64_t pmap_enter_pv = xpf_item_resolve("kernelSymbol.pmap_enter_pv");
+	XPF_ASSERT(pmap_enter_pv);
 
 	uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
 	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
 
 	uint64_t ref = pfsec_find_next_inst(gXPF.kernelPPLTextSection, pmap_enter_pv, 0, ldrAnyInst, ldrAnyMask);
+	XPF_ASSERT(ref);
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelPPLTextSection, ref);
 }
 
 static uint64_t xpf_find_pmap_enter_options_addr(void)
 {
 	uint64_t pmap_enter_options_ppl = xpf_item_resolve("kernelSymbol.pmap_enter_options_ppl");
+	XPF_ASSERT(pmap_enter_options_ppl);
 
 	__block uint64_t pmap_enter_options_addr = 0;
 
@@ -262,6 +281,7 @@ static uint64_t xpf_find_pmap_enter_options_addr(void)
 static uint64_t xpf_find_pmap_remove_options(void)
 {
     uint64_t pmap_remove_options_ppl = xpf_item_resolve("kernelSymbol.pmap_remove_options_ppl");
+	XPF_ASSERT(pmap_remove_options_ppl);
 
 	__block uint64_t pmap_remove_options = 0;
 

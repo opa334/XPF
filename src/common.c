@@ -9,6 +9,7 @@ static uint64_t xpf_find_arm_vm_init(void)
 		*stop = true;
 	});
 	pfmetric_free(contiguousHintMetric);
+	XPF_ASSERT(contiguousHintAddr);
 
 	__block uint64_t arm_init_mid = 0;
 	PFXrefMetric *contiguousHintXrefMetric = pfmetric_xref_init(contiguousHintAddr, XREF_TYPE_MASK_REFERENCE);
@@ -17,6 +18,7 @@ static uint64_t xpf_find_arm_vm_init(void)
 		*stop = true;
 	});
 	pfmetric_free(contiguousHintXrefMetric);
+	XPF_ASSERT(arm_init_mid);
 
 	return pfsec_find_function_start(gXPF.kernelTextSection, arm_init_mid);
 }
@@ -24,6 +26,7 @@ static uint64_t xpf_find_arm_vm_init(void)
 static uint64_t xpf_find_arm_vm_init_reference(uint32_t n)
 {
 	uint64_t arm_vm_init = xpf_item_resolve("kernelSymbol.arm_vm_init");
+	XPF_ASSERT(arm_vm_init);
 
 	uint32_t strAny = 0, strAnyMask = 0;
 	arm64_gen_str_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &strAny, &strAnyMask);
@@ -47,6 +50,7 @@ static uint64_t xpf_find_pmap_bootstrap(void)
 		*stop = true;
 	});
 	pfmetric_free(asidPlruMetric);
+	XPF_ASSERT(pmap_asid_plru_stringAddr);
 
 	__block uint64_t pmap_bootstrap = 0;
 	PFXrefMetric *asidPlruXrefMetric = pfmetric_xref_init(pmap_asid_plru_stringAddr, XREF_TYPE_MASK_REFERENCE);
@@ -61,6 +65,7 @@ static uint64_t xpf_find_pmap_bootstrap(void)
 static uint64_t xpf_find_pointer_mask_symbol(uint32_t n)
 {
 	uint64_t pmap_bootstrap = xpf_item_resolve("kernelSymbol.pmap_bootstrap");
+	XPF_ASSERT(pmap_bootstrap);
 
 	uint32_t ldrQ0AnyInst = 0, ldrQ0AnyMask = 0;
 	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_Q(0), ARM64_REG_ANY, OPT_UINT64_NONE, &ldrQ0AnyInst, &ldrQ0AnyMask);
@@ -104,9 +109,9 @@ static uint64_t xpf_find_ARM_TT_L1_INDEX_MASK(void)
 		case 26:
 		return 0x0000003fc0000000ULL;
 		default:
-		printf("ARM_TT_L1_INDEX_MASK: Unexpected T1SZ_BOOT??? (%llu)\n", T1SZ_BOOT);
+		xpf_set_error("ARM_TT_L1_INDEX_MASK: Unexpected T1SZ_BOOT??? (%llu)", T1SZ_BOOT);
+		return 0;
 	}
-	return 0;
 }
 
 static uint64_t xpf_find_PT_INDEX_MAX(void)
@@ -120,6 +125,7 @@ static uint64_t xpf_find_PT_INDEX_MAX(void)
 		*stop = true;
 	});
 	pfmetric_free(stringMetric);
+	XPF_ASSERT(stringAddr);
 
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t xrefAddr = 0;
@@ -128,10 +134,12 @@ static uint64_t xpf_find_PT_INDEX_MAX(void)
 		*stop = true;
 	});
 	pfmetric_free(xrefMetric);
+	XPF_ASSERT(xrefAddr);
 
 	uint32_t movnAny0Inst = 0, movnAny0Mask = 0;
 	arm64_gen_mov_imm('n', ARM64_REG_ANY, OPT_UINT64(0), OPT_UINT64(0), &movnAny0Inst, &movnAny0Mask);
 	uint64_t movAddr = pfsec_find_prev_inst(textSection, xrefAddr, 100, movnAny0Inst, movnAny0Mask);
+	XPF_ASSERT(movAddr);
 
 	arm64_register movReg;
 	int r = arm64_dec_mov_imm(pfsec_read32(textSection, movAddr), &movReg, NULL, NULL, NULL);
@@ -158,6 +166,7 @@ static uint64_t xpf_find_PT_INDEX_MAX(void)
 static uint64_t xpf_find_phystokv(void)
 {
 	uint64_t arm_vm_init = xpf_item_resolve("kernelSymbol.arm_vm_init");
+	XPF_ASSERT(arm_vm_init);
 
 	uint32_t blAny = 0, blAnyMask = 0;
 	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAny, &blAnyMask);
@@ -183,6 +192,7 @@ static uint64_t xpf_find_phystokv(void)
 static uint64_t xpf_find_ptov_table(void)
 {
 	uint64_t phystokv = xpf_item_resolve("kernelSymbol.phystokv");
+	XPF_ASSERT(phystokv);
 
 	uint32_t ldrAny = 0, ldrAnyMask = 0;
 	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
@@ -194,6 +204,7 @@ static uint64_t xpf_find_ptov_table(void)
 		ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 20, ldrAny, ldrAnyMask);
 		toCheck = ldrAddr + 4;
 	}
+	XPF_ASSERT(ldrAddr);
 
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
 }
@@ -213,6 +224,8 @@ static uint64_t xpf_find_cpu_ttep(void)
 	arm64_gen_cb_n_z(OPT_BOOL(false), ARM64_REG_X(21), OPT_UINT64_NONE, &cbzX21Any, &cbzX21AnyMask);
 
 	uint64_t cpu_ttep_pre = pfsec_find_next_inst(gXPF.kernelTextSection, start_first_cpu, 0, cbzX21Any, cbzX21AnyMask);
+	XPF_ASSERT(cpu_ttep_pre);
+
 	uint64_t addAddr = cpu_ttep_pre + 8;
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, addAddr);
 }
@@ -255,6 +268,7 @@ static uint64_t xpf_find_fatal_error_fmt(void)
 		});
 	}
 	pfmetric_free(amfiErrorMetric);
+	XPF_ASSERT(amfiErrorAddr);
 
 	__block uint64_t fatal_error_fmt = 0;
 	PFXrefMetric *amfiErrorXrefMetric = pfmetric_xref_init(amfiErrorAddr, XREF_TYPE_MASK_REFERENCE);
@@ -274,6 +288,7 @@ static uint64_t xpf_find_kalloc_data_external(void)
 	}
 
 	uint64_t fatal_error_fmt = xpf_item_resolve("kernelSymbol.fatal_error_fmt");
+	XPF_ASSERT(fatal_error_fmt);
 
 	uint32_t blAny = 0, blAnyMask = 0;
 	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAny, &blAnyMask);
@@ -282,11 +297,14 @@ static uint64_t xpf_find_kalloc_data_external(void)
 		sec = gXPF.kernelTextSection;
 		kallocDataExternalBlAddr = pfsec_find_next_inst(sec, fatal_error_fmt, 20, blAny, blAnyMask);
 	}
+	XPF_ASSERT(kallocDataExternalBlAddr);
 
 	uint32_t kallocDataExternalBl = pfsec_read32(sec, kallocDataExternalBlAddr);
 
 	uint64_t kallocDataExternal = 0;
 	arm64_dec_b_l(kallocDataExternalBl, kallocDataExternalBlAddr, &kallocDataExternal, NULL);
+	XPF_ASSERT(kallocDataExternal);
+
 	return pfsec_arm64_resolve_stub(sec, kallocDataExternal);
 }
 
@@ -298,6 +316,7 @@ static uint64_t xpf_find_kfree_data_external(void)
 	}
 
 	uint64_t fatal_error_fmt = xpf_item_resolve("kernelSymbol.fatal_error_fmt");
+	XPF_ASSERT(fatal_error_fmt);
 
 	uint32_t blAny = 0, blAnyMask = 0;
 	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAny, &blAnyMask);
@@ -308,30 +327,31 @@ static uint64_t xpf_find_kfree_data_external(void)
 		sec = gXPF.kernelTextSection;
 		fatal_error_fmt_end = pfsec_find_next_inst(sec, fatal_error_fmt, 0, ret, 0xffffffff);
 	}
+	XPF_ASSERT(fatal_error_fmt_end);
 
-	if (fatal_error_fmt_end) {
-		uint32_t movW1_0x400_Inst = 0, movW1_0x400_InstMask = 0;
-		arm64_gen_mov_imm('z', ARM64_REG_W(1), OPT_UINT64(0x400), OPT_UINT64(0), &movW1_0x400_Inst, &movW1_0x400_InstMask);
-		uint64_t kfree_data_external_pre = pfsec_find_prev_inst(sec, fatal_error_fmt_end, 25, movW1_0x400_Inst, movW1_0x400_InstMask);
+	uint32_t movW1_0x400_Inst = 0, movW1_0x400_InstMask = 0;
+	arm64_gen_mov_imm('z', ARM64_REG_W(1), OPT_UINT64(0x400), OPT_UINT64(0), &movW1_0x400_Inst, &movW1_0x400_InstMask);
+	uint64_t kfree_data_external_pre = pfsec_find_prev_inst(sec, fatal_error_fmt_end, 25, movW1_0x400_Inst, movW1_0x400_InstMask);
 
-		uint64_t kfree_data_external = 0;
-		if (arm64_dec_b_l(pfsec_read32(sec, kfree_data_external_pre+4), kfree_data_external_pre+4, &kfree_data_external, NULL) == 0) {
-			return pfsec_arm64_resolve_stub(sec, kfree_data_external);
-		}
-	}
+	uint64_t kfree_data_external = 0;
+	int decRet = arm64_dec_b_l(pfsec_read32(sec, kfree_data_external_pre+4), kfree_data_external_pre+4, &kfree_data_external, NULL);
+	XPF_ASSERT(decRet == 0);
 
-	return 0;
+	return pfsec_arm64_resolve_stub(sec, kfree_data_external);
 }
 
 static uint64_t xpf_find_allproc(void)
 {
 	PFStringMetric *shutdownwaitMetric = pfmetric_string_init("shutdownwait");
+	XPF_ASSERT(shutdownwaitMetric);
+
 	__block uint64_t shutdownwaitString = 0;
 	pfmetric_run(gXPF.kernelStringSection, shutdownwaitMetric, ^(uint64_t vmaddr, bool *stop) {
 		shutdownwaitString = vmaddr;
 		*stop = true;
 	});
 	pfmetric_free(shutdownwaitMetric);
+	XPF_ASSERT(shutdownwaitString);
 
 	PFXrefMetric *shutdownwaitXrefMetric = pfmetric_xref_init(shutdownwaitString, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t beforeLdrAddr = 0;
@@ -340,9 +360,11 @@ static uint64_t xpf_find_allproc(void)
 		*stop = true;
 	});
 	pfmetric_free(shutdownwaitXrefMetric);
+	XPF_ASSERT(beforeLdrAddr);
 
 	arm64_register destinationReg;
-	if (arm64_dec_add_imm(pfsec_read32(gXPF.kernelTextSection, beforeLdrAddr), &destinationReg, NULL, NULL) != 0) return 0;
+	int decRet = arm64_dec_add_imm(pfsec_read32(gXPF.kernelTextSection, beforeLdrAddr), &destinationReg, NULL, NULL);
+	XPF_ASSERT(decRet == 0);
 
 	if (ARM64_REG_GET_NUM(destinationReg) != 3) {
 		// If the string is not loaded into x3, we need to advance until the mov x3, <target>
@@ -377,6 +399,8 @@ static uint64_t xpf_find_allproc(void)
 	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
 
 	uint64_t ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, beforeLdrAddr, 20, ldrAny, ldrAnyMask);
+	XPF_ASSERT(ldrAddr);
+
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
 }
 
@@ -401,8 +425,7 @@ static uint64_t xpf_find_task_crashinfo_release_ref(void)
 			*stop = true;
 		});
 		pfmetric_free(corpseReleasedMetric);
-
-		if (!corpseReleasedStringAddr) return 0;
+		XPF_ASSERT(corpseReleasedStringAddr);
 
 		// iOS 14 also does not have the movz after this panic, so we look for a ret instruction before (as task_crashinfo_release_ref should be the first xref).
 		PFXrefMetric *corseReleasedXrefMetric = pfmetric_xref_init(corpseReleasedStringAddr, XREF_TYPE_MASK_REFERENCE);
@@ -434,6 +457,7 @@ static uint64_t xpf_find_task_crashinfo_release_ref(void)
 static uint64_t xpf_find_task_collect_crash_info(void)
 {
 	uint64_t task_crashinfo_release_ref = xpf_item_resolve("kernelSymbol.task_crashinfo_release_ref");
+	XPF_ASSERT(task_crashinfo_release_ref);
 
 	uint32_t movzW1_0x4000 = 0x52880001, movzW1_0x4000Mask = 0xffffffff;
 	__block uint64_t task_collect_crash_info = 0;
@@ -460,6 +484,7 @@ static uint64_t xpf_find_task_collect_crash_info(void)
 	}
 
 	pfmetric_free(task_crashinfo_release_refXrefMetric);
+	XPF_ASSERT(task_collect_crash_info);
 
 	// Handle outlining on iOS 18.4+
 	// Bit hacky, but with a bit of wishful thinking it might stay like this
@@ -494,10 +519,7 @@ static uint64_t xpf_find_task_itk_space(void)
 	});
 	pfmetric_free(task_collect_crash_infoXrefMetric);
 
-	if (!task_collect_crash_infoXref) {
-		xpf_set_error("itk_space error: Unable to find task_collect_crash_info (%#llx) xref", task_collect_crash_info);
-		return 0;
-	}
+	XPF_ASSERT(task_collect_crash_infoXref);
 
 	// At vmaddr + 4 there is a CBZ to some other place
 	// At that place, the next CBZ leads to the place where the actual reference we want is
@@ -505,10 +527,8 @@ static uint64_t xpf_find_task_itk_space(void)
 	uint64_t cbz1Addr = task_collect_crash_infoXref + 4;
 	bool isCbnz = false;
 	uint64_t target1 = 0;
-	if (arm64_dec_cb_n_z(pfsec_read32(gXPF.kernelTextSection, cbz1Addr), cbz1Addr, &isCbnz, NULL, &target1) != 0) {
-		xpf_set_error("itk_space error: first branch is not cbz");
-		return 0;
-	}
+	int decRet = arm64_dec_cb_n_z(pfsec_read32(gXPF.kernelTextSection, cbz1Addr), cbz1Addr, &isCbnz, NULL, &target1);
+	XPF_ASSERT(decRet == 0);
 	if (isCbnz) {
 		// If this is not a cbz and rather a cbnz, treat the instruction after it as the cbz target
 		target1 = cbz1Addr + 4;
@@ -520,10 +540,9 @@ static uint64_t xpf_find_task_itk_space(void)
 	uint64_t cbz2Addr = pfsec_find_next_inst(gXPF.kernelTextSection, target1, 0x20, cbzAnyInst, cbzAnyMask);
 
 	uint64_t target2 = 0;
-	if (arm64_dec_cb_n_z(pfsec_read32(gXPF.kernelTextSection, cbz2Addr), cbz2Addr, &isCbnz, NULL, &target2) != 0) {
-		xpf_set_error("itk_space error: second branch not found");
-		return 0;
-	}
+	decRet = arm64_dec_cb_n_z(pfsec_read32(gXPF.kernelTextSection, cbz2Addr), cbz2Addr, &isCbnz, NULL, &target2);
+	XPF_ASSERT(decRet == 0);
+
 	if (isCbnz) {
 		// If this is not a cbz and rather a cbnz, treat the instruction after it as the cbz target
 		target2 = cbz2Addr + 4;
@@ -572,6 +591,8 @@ static uint64_t xpf_find_vm_reference(uint32_t idx)
 		pfmetric_free(patternMetric);
 	}
 
+	XPF_ASSERT(andAddr);
+
 	uint32_t ldrAny = 0, ldrAnyMask = 0;
 	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAny, &ldrAnyMask);
 	uint64_t toCheck = andAddr;
@@ -580,6 +601,8 @@ static uint64_t xpf_find_vm_reference(uint32_t idx)
 		ldrAddr = pfsec_find_next_inst(gXPF.kernelTextSection, toCheck, 20, ldrAny, ldrAnyMask);
 		toCheck = ldrAddr + 4;
 	}
+
+	XPF_ASSERT(ldrAddr);
 
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);;
 }
@@ -603,6 +626,8 @@ static uint64_t xpf_find_vm_map_pmap(void)
 		});
 	}
 
+	XPF_ASSERT(stringAddr);
+
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t xrefAddr = 0;
 	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
@@ -610,6 +635,8 @@ static uint64_t xpf_find_vm_map_pmap(void)
 		*stop = true;
 	});
 	pfmetric_free(xrefMetric);
+
+	XPF_ASSERT(xrefAddr);
 
 	uint32_t inst[2] = { 0 };
 	uint32_t mask[2] = { 0 };
@@ -642,6 +669,7 @@ static uint64_t xpf_find_proc_struct_size(void)
 			*stop = true;
 		});
 		pfmetric_free(procTaskStringMetric);
+		XPF_ASSERT(procTaskStringAddr);
 
 		PFXrefMetric *procTaskXrefMetric = pfmetric_xref_init(procTaskStringAddr, XREF_TYPE_MASK_REFERENCE);
 		__block uint64_t procTaskStringXref = 0;
@@ -650,10 +678,12 @@ static uint64_t xpf_find_proc_struct_size(void)
 			*stop = true;
 		});
 		pfmetric_free(procTaskXrefMetric);
+		XPF_ASSERT(procTaskStringXref);
 
 		uint32_t ldrAnyInst = 0, ldrAnyMask = 0;
 		arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrAnyInst, &ldrAnyMask);
 		uint64_t ldrAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, procTaskStringXref, 0x20, ldrAnyInst, ldrAnyMask);
+		XPF_ASSERT(ldrAddr);
 		
 		uint64_t proc_struct_sizeAddr = pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrAddr);
 		return pfsec_read64(gXPF.kernelDataSection, proc_struct_sizeAddr);
@@ -668,6 +698,7 @@ static uint64_t xpf_find_proc_struct_size(void)
 			*stop = true;
 		});
 		pfmetric_free(procStringMetric);
+		XPF_ASSERT(procStringAddr);
 
 		uint64_t mask = 0x0000ffffffffffff;
 		PFPatternMetric *patternMetric = pfmetric_pattern_init(&procStringAddr, &mask, sizeof(procStringAddr), sizeof(uint64_t));
@@ -693,6 +724,7 @@ static uint64_t xpf_find_perfmon_dev_open(void)
 		*stop = true;
 	});
 	pfmetric_free(perfmonMetric);
+	XPF_ASSERT(perfmonString);
 
 	PFXrefMetric *perfmonXrefMetric = pfmetric_xref_init(perfmonString, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t perfmonXref = 0;
@@ -700,20 +732,23 @@ static uint64_t xpf_find_perfmon_dev_open(void)
 		perfmonXref = vmaddr;
 		*stop = true;
 	});
-
 	pfmetric_free(perfmonXrefMetric);
+	XPF_ASSERT(perfmonXref);
+
 	return pfsec_find_function_start(gXPF.kernelTextSection, perfmonXref);
 }
 
 static uint64_t xpf_find_perfmon_devices(void)
 {
 	uint64_t perfmon_dev_open = xpf_item_resolve("kernelSymbol.perfmon_dev_open");
+	XPF_ASSERT(perfmon_dev_open);
 
 	uint32_t movWAny_0x28Inst = 0, movWAny_0x28Mask = 0;
 	arm64_gen_mov_imm('z', ARM64_REG_ANY, OPT_UINT64(0x28), OPT_UINT64_NONE, &movWAny_0x28Inst, &movWAny_0x28Mask);
 
 	// The "add" of the "adrp, add" we want is either one instruction before this or three after it
 	uint64_t movAddr = pfsec_find_next_inst(gXPF.kernelTextSection, perfmon_dev_open, 0, movWAny_0x28Inst, movWAny_0x28Mask);
+	XPF_ASSERT(movAddr);
 
 	uint64_t perfmon_devices = pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, movAddr - 4);
 	if (!perfmon_devices) {
@@ -725,23 +760,26 @@ static uint64_t xpf_find_perfmon_devices(void)
 
 static uint64_t xpf_find_vn_kqfilter(void)
 {
-	PFStringMetric *InvalidKnoteMetric = pfmetric_string_init("Invalid knote filter on a vnode! @%s:%d");
-	__block uint64_t InvalidKnoteString = 0;
-	pfmetric_run(gXPF.kernelStringSection, InvalidKnoteMetric, ^(uint64_t vmaddr, bool *stop) {
-		InvalidKnoteString = vmaddr;
+	PFStringMetric *invalidKnoteMetric = pfmetric_string_init("Invalid knote filter on a vnode! @%s:%d");
+	__block uint64_t invalidKnoteString = 0;
+	pfmetric_run(gXPF.kernelStringSection, invalidKnoteMetric, ^(uint64_t vmaddr, bool *stop) {
+		invalidKnoteString = vmaddr;
 		*stop = true;
 	});
-	pfmetric_free(InvalidKnoteMetric);
+	pfmetric_free(invalidKnoteMetric);
+	XPF_ASSERT(invalidKnoteString);
 
-	PFXrefMetric *InvalidKnoteXrefMetric = pfmetric_xref_init(InvalidKnoteString, XREF_TYPE_MASK_REFERENCE);
-	__block uint64_t InvalidKnoteXref = 0;
-	pfmetric_run(gXPF.kernelTextSection, InvalidKnoteXrefMetric, ^(uint64_t vmaddr, bool *stop) {
-		InvalidKnoteXref = vmaddr;
+	PFXrefMetric *invalidKnoteXrefMetric = pfmetric_xref_init(invalidKnoteString, XREF_TYPE_MASK_REFERENCE);
+	__block uint64_t invalidKnoteXref = 0;
+	pfmetric_run(gXPF.kernelTextSection, invalidKnoteXrefMetric, ^(uint64_t vmaddr, bool *stop) {
+		invalidKnoteXref = vmaddr;
 		*stop = true;
 	});
+	pfmetric_free(invalidKnoteXrefMetric);
+	XPF_ASSERT(invalidKnoteXref);
 
-	pfmetric_free(InvalidKnoteXrefMetric);
-	uint64_t ref_start = pfsec_find_function_start(gXPF.kernelTextSection, InvalidKnoteXref);
+	uint64_t ref_start = pfsec_find_function_start(gXPF.kernelTextSection, invalidKnoteXref);
+	XPF_ASSERT(ref_start);
 
 	return pfsec_find_function_start(gXPF.kernelTextSection, ref_start - 0x4);
 }
@@ -749,10 +787,12 @@ static uint64_t xpf_find_vn_kqfilter(void)
 static uint64_t xpf_find_cdevsw(void)
 {
 	uint64_t vn_kqfilter = xpf_item_resolve("kernelSymbol.vn_kqfilter");
+	XPF_ASSERT(vn_kqfilter);
 
 	uint32_t movW2Inst = 0, movW2Mask = 0;
 	arm64_gen_mov_imm('z', ARM64_REG_W(2), OPT_UINT64(0x20), OPT_UINT64(0), &movW2Inst, &movW2Mask);
 	uint64_t before_bl_spec_kqfilterAddr = pfsec_find_next_inst(gXPF.kernelTextSection, vn_kqfilter, 100, movW2Inst, movW2Mask);
+	XPF_ASSERT(before_bl_spec_kqfilterAddr);
 	uint64_t bl_spec_kqfilterAddr = before_bl_spec_kqfilterAddr + 4;
 
 	uint64_t spec_kqfilter = 0;
@@ -761,6 +801,7 @@ static uint64_t xpf_find_cdevsw(void)
 	uint32_t movW10_0x70 = 0, mov10_0x70Mask = 0;
 	arm64_gen_mov_imm('z', ARM64_REG_W(10), OPT_UINT64(0x70), OPT_UINT64(0), &movW10_0x70, &mov10_0x70Mask);
 	uint64_t movAddr = pfsec_find_next_inst(gXPF.kernelTextSection, spec_kqfilter, 0, movW10_0x70, mov10_0x70Mask);
+	XPF_ASSERT(movAddr);
 
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, movAddr + 0x8);
 }
@@ -774,6 +815,7 @@ static uint64_t xpf_find_proc_apply_sandbox(void)
 		*stop = true;
 	});
 	pfmetric_free(stringMetric);
+	XPF_ASSERT(sandboxFailedStringAddr);
 
 	__block uint64_t proc_apply_sandbox = 0;
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(sandboxFailedStringAddr, XREF_TYPE_MASK_REFERENCE);
@@ -794,7 +836,9 @@ static uint64_t xpf_find_mac_label_set(void)
 	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAnyInst, &blAnyMask);
 
 	uint64_t firstBLAddr = pfsec_find_next_inst(gXPF.kernelTextSection, proc_apply_sandbox, 100, blAnyInst, blAnyMask);
+	XPF_ASSERT(firstBLAddr);
 	uint64_t secondBLAddr = pfsec_find_next_inst(gXPF.kernelTextSection, firstBLAddr+4, 100, blAnyInst, blAnyMask);
+	XPF_ASSERT(secondBLAddr);
 
 	uint64_t mac_label_set = 0;
 	arm64_dec_b_l(pfsec_read32(gXPF.kernelTextSection, secondBLAddr), secondBLAddr, &mac_label_set, NULL);
@@ -852,6 +896,7 @@ static uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 			stringSec = gXPF.kernelStringSection;
 		}
 	}
+	XPF_ASSERT(syscallMasksStringAddr);
 
 	PFXrefMetric *stringXrefMetric = pfmetric_xref_init(syscallMasksStringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t invalidSyscallLogRefAddr = 0;
@@ -860,10 +905,12 @@ static uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 		*stop = true;
 	});
 	pfmetric_free(stringXrefMetric);
+	XPF_ASSERT(invalidSyscallLogRefAddr);
 
 	uint32_t adrpAnyInst = 0, adrpAnyMask = 0;
 	arm64_gen_adr_p(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_REG_ANY, &adrpAnyInst, &adrpAnyMask);
 	uint64_t prevAdrpAddr = pfsec_find_prev_inst(textSec, invalidSyscallLogRefAddr-8, 20, adrpAnyInst, adrpAnyMask);
+	XPF_ASSERT(prevAdrpAddr);
 
 	PFXrefMetric *logBranchXrefMetric = pfmetric_xref_init(prevAdrpAddr, XREF_TYPE_MASK_JUMP);
 	__block uint64_t logBranchXrefAddr = 0;
@@ -872,10 +919,12 @@ static uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 		*stop = false;
 	});
 	pfmetric_free(logBranchXrefMetric);
+	XPF_ASSERT(logBranchXrefAddr);
 
 	uint32_t blAnyInst = 0, blAnyMask = 0;
 	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAnyInst, &blAnyMask);
 	uint64_t blAddr = pfsec_find_prev_inst(textSec, logBranchXrefAddr, 100, blAnyInst, blAnyMask);
+	XPF_ASSERT(blAddr);
 	uint64_t proc_get_syscall_filter_mask_size = 0;
 	arm64_dec_b_l(pfsec_read32(textSec, blAddr), blAddr, &proc_get_syscall_filter_mask_size, NULL);
 	
@@ -885,11 +934,14 @@ static uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 static uint64_t xpf_find_nsysent(void)
 {
 	uint64_t proc_get_syscall_filter_mask_size = xpf_item_resolve("kernelSymbol.proc_get_syscall_filter_mask_size");
+	XPF_ASSERT(proc_get_syscall_filter_mask_size);
 
 	uint32_t movAnyInst = 0, movAnyMask = 0;
 	arm64_gen_mov_imm('z', ARM64_REG_ANY, OPT_UINT64_NONE, OPT_UINT64_NONE, &movAnyInst, &movAnyMask);
 	uint64_t mov1Addr = pfsec_find_next_inst(gXPF.kernelTextSection, proc_get_syscall_filter_mask_size, 20, movAnyInst, movAnyMask);
+	XPF_ASSERT(mov1Addr);
 	uint64_t mov2Addr = pfsec_find_next_inst(gXPF.kernelTextSection, mov1Addr+4, 10, movAnyInst, movAnyMask);
+	XPF_ASSERT(mov2Addr);
 
 	uint64_t imm = 0;
 	arm64_dec_mov_imm(pfsec_read32(gXPF.kernelTextSection, mov2Addr), NULL, &imm, NULL, NULL);
@@ -899,10 +951,12 @@ static uint64_t xpf_find_nsysent(void)
 static uint64_t xpf_find_mach_trap_count(void)
 {
 	uint64_t proc_get_syscall_filter_mask_size = xpf_item_resolve("kernelSymbol.proc_get_syscall_filter_mask_size");
+	XPF_ASSERT(proc_get_syscall_filter_mask_size);
 
 	uint32_t movAnyInst = 0, movAnyMask = 0;
 	arm64_gen_mov_imm('z', ARM64_REG_ANY, OPT_UINT64_NONE, OPT_UINT64_NONE, &movAnyInst, &movAnyMask);
 	uint64_t movAddr = pfsec_find_next_inst(gXPF.kernelTextSection, proc_get_syscall_filter_mask_size, 20, movAnyInst, movAnyMask);
+	XPF_ASSERT(movAddr);
 
 	uint64_t imm = 0;
 	arm64_dec_mov_imm(pfsec_read32(gXPF.kernelTextSection, movAddr), NULL, &imm, NULL, NULL);
@@ -912,10 +966,12 @@ static uint64_t xpf_find_mach_trap_count(void)
 static uint64_t xpf_find_mach_kobj_count(void)
 {
 	uint64_t proc_get_syscall_filter_mask_size = xpf_item_resolve("kernelSymbol.proc_get_syscall_filter_mask_size");
+	XPF_ASSERT(proc_get_syscall_filter_mask_size);
 
 	uint32_t ldrswInst = 0, ldrswMask = 0;
 	arm64_gen_ldrs_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_ANY, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrswInst, &ldrswMask);
 	uint64_t ldrswAddr = pfsec_find_next_inst(gXPF.kernelTextSection, proc_get_syscall_filter_mask_size, 40, ldrswInst, ldrswMask);
+	XPF_ASSERT(ldrswAddr);
 	return pfsec_arm64_resolve_adrp_ldr_str_add_reference_auto(gXPF.kernelTextSection, ldrswAddr);
 }
 
@@ -928,6 +984,7 @@ static uint64_t xpf_find_developer_mode_enabled(void)
 		*stop = true;
 	});
 	pfmetric_free(stringMetric);
+	XPF_ASSERT(stringAddr);
 
 	PFXrefMetric *stringXrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t stringXrefAddr = 0;
@@ -936,10 +993,12 @@ static uint64_t xpf_find_developer_mode_enabled(void)
 		*stop = true;
 	});
 	pfmetric_free(stringXrefMetric);
+	XPF_ASSERT(stringXrefAddr);
 
 	uint32_t adrpAnyInst = 0, adrpAnyMask = 0;
 	arm64_gen_adr_p(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, ARM64_REG_ANY, &adrpAnyInst, &adrpAnyMask);
 	uint64_t branchTarget = pfsec_find_prev_inst(gXPF.kernelTextSection, stringXrefAddr - 4, 20, adrpAnyInst, adrpAnyMask);
+	XPF_ASSERT(branchTarget);
 
 	PFXrefMetric *branchXrefMetric = pfmetric_xref_init(branchTarget, XREF_TYPE_MASK_JUMP);
 	__block uint64_t branchTarget2 = 0;
@@ -966,12 +1025,15 @@ static uint64_t xpf_find_developer_mode_enabled(void)
 		afterRefAddr = branchTarget;
 	}
 
+	XPF_ASSERT(afterRefAddr);
+
 	uint32_t ldrLitAnyInst = 0, ldrLitAnyMask = 0;
 	arm64_gen_ldr_lit(ARM64_REG_ANY, OPT_UINT64_NONE, OPT_UINT64_NONE, &ldrLitAnyInst, &ldrLitAnyMask);
 
 	__block uint64_t developer_mode_candidate = 0;
 	uint64_t ldrLitAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, afterRefAddr, 25, ldrLitAnyInst, ldrLitAnyMask);
 	uint64_t adrpAddAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, afterRefAddr, 50, adrpAnyInst, adrpAnyMask);
+	XPF_ASSERT(ldrLitAddr || adrpAddAddr);
 	// Depending on the version, developer_mode_storage can either be loaded via adrp+add+ldrb or just via a literal ldr
 	
 	// Literal ldr:
@@ -1079,6 +1141,8 @@ static uint64_t xpf_find_thread_machine_CpuDatap(void)
 		pfmetric_free(stringMetric);
 	}
 
+	XPF_ASSERT(stringAddr);
+
 	__block uint64_t panicBranch = 0;
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
 	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop) {
@@ -1091,6 +1155,8 @@ static uint64_t xpf_find_thread_machine_CpuDatap(void)
 		*stop = true;
 	});
 	pfmetric_free(xrefMetric);
+
+	XPF_ASSERT(panicBranch);
 
 	__block uint64_t machine_CpuDatap = 0;
 	PFXrefMetric *panicBranchXrefMetric = pfmetric_xref_init(panicBranch, XREF_TYPE_MASK_JUMP);
@@ -1126,6 +1192,7 @@ static uint64_t xpf_find_thread_machine_kstackptr(void)
 		*stop = true;
 	});
 	pfmetric_free(stringMetric);
+	XPF_ASSERT(stringAddr);
 
 	__block uint64_t machine_kstackptr = 0;
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
