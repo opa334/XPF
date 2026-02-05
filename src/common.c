@@ -77,7 +77,10 @@ static uint64_t xpf_find_pointer_mask_symbol(uint32_t n)
 
 static uint64_t xpf_find_pointer_mask(void)
 {
-	uint64_t pointer_mask = pfsec_read64(gXPF.kernelConstSection, xpf_item_resolve("kernelSymbol.pointer_mask"));
+	uint64_t pointer_mask_symbol = xpf_item_resolve("kernelSymbol.pointer_mask");
+	XPF_ASSERT(pointer_mask_symbol);
+
+	uint64_t pointer_mask = pfsec_read64(gXPF.kernelConstSection, pointer_mask_symbol);
 	if (pointer_mask != 0xffffff8000000000 && pointer_mask != 0xffff800000000000 && pointer_mask != 0xffffffc000000000) {
 		xpf_set_error("xpf_find_pointer_mask error: Unexpected PAC mask: 0x%llx", pointer_mask);
 		return 0;
