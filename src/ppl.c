@@ -299,7 +299,7 @@ static uint64_t xpf_find_pmap_remove_options(void)
 
 void xpf_ppl_init(void)
 {
-	if (gXPF.kernelIsArm64e) {
+	if (gXPF.kernelIsArm64e && !gXPF.sptm) {
 		xpf_item_register("kernelSymbol.ppl_enter", xpf_find_ppl_enter, NULL);
 		xpf_item_register("kernelSymbol.ppl_bootstrap_dispatch", xpf_find_ppl_bootstrap_dispatch, NULL);
 		xpf_item_register("kernelSymbol.ppl_dispatch_section", xpf_find_ppl_dispatch_section, NULL);

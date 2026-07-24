@@ -14,13 +14,20 @@ CHOMA_DEP =
 LDFLAGS  += -L$(CHOMA_DYLIB_PATH) -lchoma
 else
 CHOMA_DEP = $(CHOMA_PATH)/src/*.c
-endif 
+endif
 
-output/macos/libxpf.dylib: $(wildcard src/*.c) $(CHOMA_DEP)
+IMG4LIB_CFLAGS = -DUSE_COMMONCRYPTO -DUSE_LIBCOMPRESSION -DiOS10 -DDER_MULTIBYTE_TAGS=1 -D__unused="__attribute__((unused))" -DDER_TAG_SIZE=8 -Iexternal/img4lib -Wno-variadic-macros -Wno-multichar -Wno-four-char-constants -Wno-unused-parameter
+IMG4LIB_LDFLAGS = -framework Security
+IMG4LIB_DEP = $(filter-out external/img4lib/libvfs/vfs_lzvn.c, $(wildcard external/img4lib/lzss.c external/img4lib/libvfs/*.c external/img4lib/libDER/*.c))
+
+CFLAGS += $(IMG4LIB_CFLAGS)
+LDFLAGS += $(IMG4LIB_LDFLAGS)
+
+output/macos/libxpf.dylib: $(wildcard src/*.c) $(CHOMA_DEP) $(IMG4LIB_DEP)
 	@mkdir -p $(shell dirname $@)
 	$(CC) $(CFLAGS_MACOS) $(LDFLAGS) -dynamiclib -install_name @loader_path/libxpf.dylib -o $@ $^
 
-output/ios/libxpf.dylib: $(wildcard src/*.c) $(CHOMA_DEP)
+output/ios/libxpf.dylib: $(wildcard src/*.c) $(CHOMA_DEP) $(IMG4LIB_DEP)
 	@mkdir -p $(shell dirname $@)
 	$(CC) $(CFLAGS_IOS) $(LDFLAGS) -dynamiclib -install_name @loader_path/libxpf.dylib -o $@ $^
 	ldid -S $@

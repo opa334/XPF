@@ -2,7 +2,14 @@
 	"C_Cpp.default.compilerPath": "/usr/bin/clang",
 	"clangd.fallbackFlags": [
 		"-I${workspaceFolder}/external/ChOma/include",
+		"-I${workspaceFolder}/external/img4lib",
 		"-I/opt/homebrew/opt/openssl@3/include",
+		"-DUSE_COMMONCRYPTO",
+		"-DUSE_LIBCOMPRESSION",
+		"-DiOS10",
+		"-D__unused=\"__attribute__((unused))\"",
+		"-DDER_MULTIBYTE_TAGS=1",
+		"-DDER_TAG_SIZE=8",
 	],
 	"files.associations": {
 		"*.ejs": "html",

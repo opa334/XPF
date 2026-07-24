@@ -1,3 +1,6 @@
 [submodule "external/ChOma"]
 	path = external/ChOma
 	url = https://github.com/opa334/ChOma
+[submodule "external/img4lib"]
+	path = external/img4lib
+	url = https://github.com/xerub/img4lib

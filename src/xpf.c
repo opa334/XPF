@@ -9,12 +9,40 @@
 
 #include "ppl.h"
 #include "non_ppl.h"
+#include "sptm_txm.h"
 #include "common.h"
 #include "bad_recovery.h"
+
+#include <libvfs/vfs.h>
 
 bool xpf_supported_always(void)
 {
 	return true;
+}
+
+bool xpf_supported_sptm(void)
+{
+	return (bool)gXPF.sptm;
+}
+
+bool xpf_supported_sptm_18_3_down(void)
+{
+	return (bool)gXPF.sptm && strcmp(gXPF.darwinVersion, "24.3.0") <= 0;
+}
+
+bool xpf_supported_sptm_18_4_to_26_x(void)
+{
+	return (bool)gXPF.sptm && strcmp(gXPF.darwinVersion, "24.4.0") >= 0 && strcmp(gXPF.darwinVersion, "27.0.0") < 0;
+}
+
+bool xpf_supported_sptm_27_0_up(void)
+{
+	return (bool)gXPF.sptm && strcmp(gXPF.darwinVersion, "27.0.0") >= 0;
+}
+
+bool xpf_supported_non_sptm(void)
+{
+	return !xpf_supported_sptm();
 }
 
 // iOS 15 and above
@@ -47,6 +75,16 @@ bool xpf_supported_1516(void)
 	return xpf_supported_15up() && xpf_supported_16down();
 }
 
+bool xpf_supported_16up_sptm(void)
+{
+	return xpf_supported_16up() && xpf_supported_sptm();
+}
+
+bool xpf_supported_16up_no_sptm(void)
+{
+	return xpf_supported_16up() && xpf_supported_non_sptm();
+}
+
 bool xpf_supported_arm64(void)
 {
 	return !gXPF.kernelIsArm64e;
@@ -59,7 +97,7 @@ bool xpf_arm64_kcall_supported(void)
 
 bool xpf_trigon_supported(void)
 {
-	return gXPF.kernelIsArm64e && xpf_supported_15up();
+	return gXPF.kernelIsArm64e && xpf_supported_15up() && xpf_supported_16down();
 }
 
 XPFSet gBaseSet = {
@@ -76,7 +114,7 @@ XPFSet gBaseSet = {
 
 XPFSet gTranslationSet = {
 	.name="translation",
-	.supported=xpf_supported_always,
+	.supported=xpf_supported_non_sptm,
 	.metrics={
 		"kernelSymbol.cpu_ttep",
 		"kernelSymbol.gVirtBase",
@@ -90,9 +128,25 @@ XPFSet gTranslationSet = {
 	}
 };
 
+XPFSet gTranslationSPTMSet = {
+	.name="translation",
+	.supported=xpf_supported_sptm,
+	.metrics={
+		"kernelSymbol.SPTMArgs",
+		"kernelSymbol.cpu_ttep",
+		"kernelSymbol.gVirtBase",
+		"kernelSymbol.gPhysBase",
+		"kernelSymbol.gPhysSize",
+		"kernelConstant.pointer_mask",
+		"kernelConstant.T1SZ_BOOT",
+		"kernelConstant.ARM_TT_L1_INDEX_MASK",
+		NULL
+	}
+};
+
 XPFSet gPhysmapSet = {
 	.name="physmap",
-	.supported=xpf_supported_always,
+	.supported=xpf_supported_non_sptm,
 	.metrics={
 		"kernelSymbol.vm_page_array_beginning_addr",
 		"kernelSymbol.vm_page_array_ending_addr",
@@ -105,6 +159,70 @@ XPFSet gPhysmapSet = {
 		"kernelConstant.PT_INDEX_MAX",
 		"kernelSymbol.pmap_enter_options_addr",
 		"kernelSymbol.pmap_remove_options",
+		NULL
+	}
+};
+
+XPFSet gPhysmapSPTMSet_18_3_Down = {
+	.name="physmap",
+	.supported=xpf_supported_sptm_18_3_down,
+	.metrics={
+		"kernelSymbol.vm_page_array_beginning_addr",
+		"kernelSymbol.vm_page_array_ending_addr",
+		"kernelSymbol.vm_first_phys_ppnum",
+		"kernelSymbol.vm_first_phys",
+		"kernelSymbol.vm_last_phys",
+		"kernelSymbol.pp_attr_table",
+		"kernelSymbol.pv_head_table",
+		"kernelSymbol.libsptm_papt_ranges",
+		"kernelSymbol.libsptm_n_papt_ranges",
+		"kernelSymbol.papt_ranges_compressed",
+		"kernelSymbol.n_papt_ranges_compressed",
+		"kernelSymbol.libsptm_frame_table",
+		NULL
+	}
+};
+
+XPFSet gPhysmapSPTMSet_18_4_Up = {
+	.name="physmap",
+	.supported=xpf_supported_sptm_18_4_to_26_x,
+	.metrics={
+		"kernelSymbol.vm_page_array_beginning_addr",
+		"kernelSymbol.vm_page_array_ending_addr",
+		"kernelSymbol.vm_first_phys_ppnum",
+		"kernelSymbol.vm_first_phys",
+		"kernelSymbol.vm_last_phys",
+		"kernelSymbol.pp_attr_table",
+		"kernelSymbol.pv_head_table",
+		"kernelSymbol.libsptm_papt_ranges",
+		"kernelSymbol.libsptm_n_papt_ranges",
+		"kernelSymbol.papt_ranges_compressed",
+		"kernelSymbol.n_papt_ranges_compressed",
+		"kernelSymbol.libsptm_frame_table",
+		"kernelSymbol.libsptm_frame_type_params",
+		"kernelStruct.sptm_frame_type_descriptor.struct_size",
+		NULL
+	}
+};
+
+XPFSet gPhysmapSPTMSet_27_0_Up = {
+	.name="physmap",
+	.supported=xpf_supported_sptm_27_0_up,
+	.metrics={
+		"kernelSymbol.vm_page_array_beginning_addr",
+		"kernelSymbol.vm_page_array_ending_addr",
+		"kernelSymbol.vm_first_phys_ppnum",
+		"kernelSymbol.vm_first_phys",
+		"kernelSymbol.vm_last_phys",
+		"kernelSymbol.libsptm_papt_ranges",
+		"kernelSymbol.libsptm_n_papt_ranges",
+		"kernelSymbol.papt_ranges_compressed",
+		"kernelSymbol.n_papt_ranges_compressed",
+		"kernelSymbol.libsptm_frame_table",
+		"kernelSymbol.libsptm_frame_type_params",
+		"kernelStruct.sptm_frame_type_descriptor.struct_size",
+		"kernelSymbol.pmap_first_pnum",
+		"kernelSymbol.vm_pages_radix_root",
 		NULL
 	}
 };
@@ -131,9 +249,18 @@ XPFSet gTrustcache15Set = {
 
 XPFSet gTrustcache16Set = {
 	.name="trustcache",
-	xpf_supported_16up,
+	xpf_supported_16up_no_sptm,
 	.metrics={
 		"kernelSymbol.ppl_trust_cache_rt",
+		NULL
+	}
+};
+
+XPFSet gTrustcacheSPTMSet = {
+	.name="trustcache",
+	xpf_supported_16up_sptm,
+	.metrics={
+		"kernelSymbol.txm_trustcache_root",
 		NULL
 	}
 };
@@ -195,9 +322,18 @@ XPFSet gPerfKRWSet = {
 
 XPFSet gDevModeSet = {
 	.name="devmode",
-	.supported=xpf_supported_16up,
+	.supported=xpf_supported_16up_no_sptm,
 	.metrics={
 		"kernelSymbol.developer_mode_enabled",
+		NULL
+	},
+};
+
+XPFSet gDevModeSPTMSet = {
+	.name="devmode",
+	.supported=xpf_supported_16up_sptm,
+	.metrics={
+		"kernelSymbol.txm_developer_mode_storage",
 		NULL
 	},
 };
@@ -228,15 +364,21 @@ XPFSet gTrigonSet = {
 XPFSet *gSets[] = {
 	&gBaseSet,
 	&gTranslationSet,
+	&gTranslationSPTMSet,
 	&gSandboxSet,
 	&gPhysmapSet,
+	&gPhysmapSPTMSet_18_3_Down,
+	&gPhysmapSPTMSet_18_4_Up,
+	&gPhysmapSPTMSet_27_0_Up,
 	&gStructSet,
 	&gTrustcache15Set,
 	&gTrustcache16Set,
+	&gTrustcacheSPTMSet,
 	&gBadRecoverySet,
 	&gPhysRWSet,
 	&gPerfKRWSet,
 	&gDevModeSet,
+	&gDevModeSPTMSet,
 	&gArm64KcallSet,
 	&gTrigonSet,
 };
@@ -253,7 +395,49 @@ PFSection *xpf_pfsec_init(const char *filesetEntryId, const char *segName, const
 	return section;
 }
 
-int xpf_start_with_kernel_path(const char *kernelPath)
+PFSection *xpf_sptm_pfsec_init(const char *segName, const char *sectName)
+{
+	if (!gXPF.sptm) return NULL;
+
+	PFSection *section = pfsec_init_from_macho(gXPF.sptm, NULL, segName, sectName);
+	if (section) {
+		pfsec_set_cached(section, true);
+		pfsec_set_pointer_decoder(section, xpfsec_decode_pointer);
+	}
+	return section;
+}
+
+PFSection *xpf_txm_pfsec_init(const char *segName, const char *sectName)
+{
+	if (!gXPF.txm) return NULL;
+
+	PFSection *section = pfsec_init_from_macho(gXPF.txm, NULL, segName, sectName);
+	if (section) {
+		pfsec_set_cached(section, true);
+		pfsec_set_pointer_decoder(section, xpfsec_decode_pointer);
+	}
+	return section;
+}
+
+int xpf_load_img4(const char *path, void **outBuf, size_t *outSize)
+{
+	FHANDLE fd = img4_reopen(file_open(path, O_RDONLY), NULL, 0);
+	if (!fd) return -1;
+
+	unsigned char *buf = 0;
+	size_t sz = 0;
+	int r = fd->ioctl(fd, IOCTL_MEM_GET_DATAPTR, &buf, &sz);
+	if (r == 0 && outBuf && outSize) {
+		*outSize = sz;
+		*outBuf = malloc(sz);
+		memcpy(*outBuf, buf, sz);
+	}
+
+	fd->close(fd);
+	return r;
+}
+
+int xpf_start_with_kernel_path(const char *kernelPath, const char *optSptmPath, const char *optTxmPath)
 {
 	gXPF.kernelFd = open(kernelPath, O_RDONLY);
 	if (gXPF.kernelFd < 0) {
@@ -316,11 +500,13 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 	gXPF.kernelDataSection = xpf_pfsec_init("com.apple.kernel", "__DATA", "__data");
 	gXPF.kernelOSLogSection = xpf_pfsec_init("com.apple.kernel", "__TEXT", "__os_log");
 	gXPF.kernelBootdataInit = xpf_pfsec_init("com.apple.kernel", "__BOOTDATA", "__init");
+	gXPF.kernelBootcodeSection = xpf_pfsec_init("com.apple.kernel", "__TEXT_BOOT_EXEC", "__bootcode");
 
 	if (gXPF.kernelIsFileset) {
 		gXPF.kernelAMFITextSection = xpf_pfsec_init("com.apple.driver.AppleMobileFileIntegrity", "__TEXT_EXEC", "__text");
 		gXPF.kernelAMFIStringSection = xpf_pfsec_init("com.apple.driver.AppleMobileFileIntegrity", "__TEXT", "__cstring");
 		gXPF.kernelSandboxTextSection = xpf_pfsec_init("com.apple.security.sandbox", "__TEXT_EXEC", "__text");
+		gXPF.kernelSandboxAuthStubSection = xpf_pfsec_init("com.apple.security.sandbox", "__TEXT_EXEC", "__auth_stubs");
 		gXPF.kernelSandboxStringSection = xpf_pfsec_init("com.apple.security.sandbox", "__TEXT", "__cstring");
 		gXPF.kernelInfoPlistSection = xpf_pfsec_init("com.apple.security.AppleImage4", "__TEXT", "__info_plist");
 	}
@@ -403,8 +589,38 @@ int xpf_start_with_kernel_path(const char *kernelPath)
 		}
 	}
 
+	if (optSptmPath) {
+		if (xpf_load_img4(optSptmPath, &gXPF.decompressedSptm, &gXPF.decompressedSptmSize) != 0) {
+			xpf_set_error("Failed to load / decompress SPTM");
+			return -1;
+		}
+
+		MemoryStream *stream = buffered_stream_init_from_buffer_nocopy(gXPF.decompressedSptm, gXPF.decompressedSptmSize, 0);
+		gXPF.sptmContainer = fat_init_from_memory_stream(stream);
+		gXPF.sptm = fat_get_single_slice(gXPF.sptmContainer);
+		gXPF.sptmBase = macho_get_base_address(gXPF.sptm);
+
+		gXPF.sptmTextSection = xpf_sptm_pfsec_init("__TEXT_EXEC", "__text");
+		gXPF.sptmStringSection = xpf_sptm_pfsec_init("__TEXT", "__cstring");
+	}
+	if (optTxmPath) {
+		if (xpf_load_img4(optTxmPath, &gXPF.decompressedTxm, &gXPF.decompressedTxmSize) != 0) {
+			xpf_set_error("Failed to load / decompress TXM");
+			return -1;
+		}
+
+		MemoryStream *stream = buffered_stream_init_from_buffer_nocopy(gXPF.decompressedTxm, gXPF.decompressedTxmSize, 0);
+		gXPF.txmContainer = fat_init_from_memory_stream(stream);
+		gXPF.txm = fat_get_single_slice(gXPF.txmContainer);
+		gXPF.txmBase = macho_get_base_address(gXPF.txm);
+
+		gXPF.txmTextSection = xpf_txm_pfsec_init("__TEXT_EXEC", "__text");
+		gXPF.txmStringSection = xpf_txm_pfsec_init("__TEXT", "__cstring");
+	}
+
 	xpf_ppl_init();
 	xpf_non_ppl_init();
+	xpf_sptm_txm_init();
 	xpf_common_init();
 	xpf_bad_recovery_init();
 
@@ -465,7 +681,7 @@ uint64_t xpfsec_decode_pointer(PFSection *section, uint64_t vmaddr, uint64_t val
 	if ((value & 0xffff000000000000) != 0xffff000000000000) {
 		// Chained fixups, other stuff
 		value &= 0x00000000ffffffff;
-		value += gXPF.kernelBase;
+		value += macho_get_base_address(section->macho);
 	}
 	return value;
 }
@@ -516,11 +732,18 @@ int xpf_offset_dictionary_add_set(xpc_object_t xdict, XPFSet *set)
 	return 0;
 }
 
+void xpf_set_ignore_base_set(bool val)
+{
+	gXPF.ignoreBaseSet = val;
+}
+
 xpc_object_t xpf_construct_offset_dictionary(const char *sets[])
 {
 	xpc_object_t offsetDictionary = xpc_dictionary_create_empty();
 
-	if (xpf_offset_dictionary_add_set(offsetDictionary, &gBaseSet) != 0) return NULL;
+	if (!gXPF.ignoreBaseSet) {
+		if (xpf_offset_dictionary_add_set(offsetDictionary, &gBaseSet) != 0) return NULL;
+	}
 
 	uint32_t setCount = (sizeof(gSets)/sizeof(XPFSet*));
 
