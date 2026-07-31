@@ -983,11 +983,11 @@ static uint64_t xpf_find_proc_get_syscall_filter_mask_size(void)
 {
 	PFSection *textSec = (gXPF.kernelSandboxTextSection ?: gXPF.kernelTextSection);
 	PFSection *stringSec = (gXPF.kernelSandboxStringSection ?: gXPF.kernelStringSection);
-	PFSection *authStubSec = (gXPF.kernelSandboxAuthStubSection ?: textSec);
 	if (!gXPF.kernelIsArm64e && !gXPF.kernelIsFileset) {
 		textSec = gXPF.kernelPLKTextSection;
 		stringSec = gXPF.kernelPrelinkTextSection;
 	}
+	PFSection *authStubSec = (gXPF.kernelSandboxAuthStubSection ?: textSec);
 
 	PFStringMetric *stringMetric = pfmetric_string_init("\"invalid # of syscalls from xnu\" @%s:%d");
 	__block uint64_t syscallMasksStringAddr = 0;
