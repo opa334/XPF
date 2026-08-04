@@ -77,6 +77,8 @@ typedef struct s_XPF {
 	PFSection *kernelSandboxTextSection;
 	PFSection *kernelSandboxStringSection;
 	PFSection *kernelSandboxAuthStubSection;
+	PFSection *kernelIOSurfaceTextSection;
+	PFSection *kernelIOSurfaceStringSection;
 	PFSection *kernelInfoPlistSection;
 
 	void *decompressedSptm;

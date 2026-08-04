@@ -23,6 +23,8 @@ int main(int argc, char *argv[]) {
 				"physmap",
 				"struct",
 				"physrw",
+				"IOSurface",
+				NULL,
 				NULL,
 				NULL,
 				NULL,

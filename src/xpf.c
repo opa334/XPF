@@ -361,6 +361,16 @@ XPFSet gTrigonSet = {
 	}
 };
 
+XPFSet gIOSurfaceSet = {
+	.name="IOSurface",
+	.supported=xpf_supported_always,
+	.metrics={
+		"kernelStruct.IOSurface.ranges",
+		"kernelStruct.IOSurface.rangeCount",
+		NULL
+	}
+};
+
 XPFSet *gSets[] = {
 	&gBaseSet,
 	&gTranslationSet,
@@ -381,6 +391,7 @@ XPFSet *gSets[] = {
 	&gDevModeSPTMSet,
 	&gArm64KcallSet,
 	&gTrigonSet,
+	&gIOSurfaceSet,
 };
 
 XPF gXPF = { 0 };
@@ -508,6 +519,8 @@ int xpf_start_with_kernel_path(const char *kernelPath, const char *optSptmPath, 
 		gXPF.kernelSandboxTextSection = xpf_pfsec_init("com.apple.security.sandbox", "__TEXT_EXEC", "__text");
 		gXPF.kernelSandboxAuthStubSection = xpf_pfsec_init("com.apple.security.sandbox", "__TEXT_EXEC", "__auth_stubs");
 		gXPF.kernelSandboxStringSection = xpf_pfsec_init("com.apple.security.sandbox", "__TEXT", "__cstring");
+		gXPF.kernelIOSurfaceTextSection = xpf_pfsec_init("com.apple.iokit.IOSurface", "__TEXT_EXEC", "__text");
+		gXPF.kernelIOSurfaceStringSection = xpf_pfsec_init("com.apple.iokit.IOSurface", "__TEXT", "__cstring");
 		gXPF.kernelInfoPlistSection = xpf_pfsec_init("com.apple.security.AppleImage4", "__TEXT", "__info_plist");
 	}
 	else {

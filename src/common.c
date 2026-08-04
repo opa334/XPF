@@ -1396,6 +1396,53 @@ static uint64_t xpf_find_iorvbar(void)
 	return iorvbar;
 }
 
+static uint64_t xpf_find_IOSurface_ranges(void)
+{
+	PFSection *textSec = (gXPF.kernelIOSurfaceTextSection ?: gXPF.kernelTextSection);
+	PFSection *stringSec = (gXPF.kernelIOSurfaceStringSection ?: gXPF.kernelStringSection);
+	if (!gXPF.kernelIsArm64e && !gXPF.kernelIsFileset) {
+		textSec = gXPF.kernelPLKTextSection;
+		stringSec = gXPF.kernelPrelinkTextSection;
+	}
+
+	__block uint64_t stringAddr = 0;
+	PFStringMetric *stringMetric = pfmetric_string_init("IOSurface: Address ranges do not cover requested allocation size\n");
+	pfmetric_run(stringSec, stringMetric, ^(uint64_t vmaddr, bool *stop){
+		stringAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(stringMetric);
+	XPF_ASSERT(stringAddr);
+
+	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
+	__block uint64_t belowRefAddr = 0;
+	pfmetric_run(textSec, xrefMetric, ^(uint64_t vmaddr, bool *stop){
+		belowRefAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(xrefMetric);
+	XPF_ASSERT(belowRefAddr);
+
+	uint32_t blAnyInst = 0, blAnyMask = 0;
+	arm64_gen_b_l(OPT_BOOL(true), OPT_UINT64_NONE, OPT_UINT64_NONE, &blAnyInst, &blAnyMask);
+	uint64_t blAddr = pfsec_find_prev_inst(textSec, belowRefAddr, 50, blAnyInst, blAnyMask);
+	XPF_ASSERT(blAddr);
+
+	uint32_t ldrX0AnyInst = 0, ldrX0AnyMask = 0;
+	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_X(0), ARM64_REG_ANY, OPT_UINT64_NONE, &ldrX0AnyInst, &ldrX0AnyMask);
+	uint64_t ldrAddr = pfsec_find_prev_inst(textSec, blAddr, 20, ldrX0AnyInst, ldrX0AnyMask);
+	XPF_ASSERT(ldrAddr);
+
+	uint64_t ldrImm = 0;
+	arm64_dec_ldr_imm(pfsec_read32(textSec, ldrAddr), NULL, NULL, &ldrImm, NULL, NULL);
+	return ldrImm;
+}
+
+static uint64_t xpf_find_IOSurface_rangeCount(void)
+{
+	return xpf_item_resolve("kernelStruct.IOSurface.ranges") + 8;
+}
+
 void xpf_common_init(void)
 {
 	xpf_item_register("kernelSymbol.start_first_cpu", xpf_find_start_first_cpu, NULL);
@@ -1457,6 +1504,9 @@ void xpf_common_init(void)
 	xpf_item_register("kernelStruct.thread.machine_CpuDatap", xpf_find_thread_machine_CpuDatap, NULL);
 	xpf_item_register("kernelStruct.thread.machine_kstackptr", xpf_find_thread_machine_kstackptr, NULL);
 	xpf_item_register("kernelStruct.thread.machine_contextData", xpf_find_thread_machine_contextData, NULL);
+
+	xpf_item_register("kernelStruct.IOSurface.ranges", xpf_find_IOSurface_ranges, NULL);
+	xpf_item_register("kernelStruct.IOSurface.rangeCount", xpf_find_IOSurface_rangeCount, NULL);
 
 	xpf_item_register("kernelSymbol.iorvbar", xpf_find_iorvbar, NULL);
 }
