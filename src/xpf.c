@@ -521,6 +521,7 @@ int xpf_start_with_kernel_path(const char *kernelPath, const char *optSptmPath, 
 		gXPF.kernelSandboxStringSection = xpf_pfsec_init("com.apple.security.sandbox", "__TEXT", "__cstring");
 		gXPF.kernelIOSurfaceTextSection = xpf_pfsec_init("com.apple.iokit.IOSurface", "__TEXT_EXEC", "__text");
 		gXPF.kernelIOSurfaceStringSection = xpf_pfsec_init("com.apple.iokit.IOSurface", "__TEXT", "__cstring");
+		gXPF.kernelIOSurfaceOsLogSection = xpf_pfsec_init("com.apple.iokit.IOSurface", "__TEXT", "__os_log");
 		gXPF.kernelInfoPlistSection = xpf_pfsec_init("com.apple.security.AppleImage4", "__TEXT", "__info_plist");
 	}
 	else {

@@ -1407,10 +1407,18 @@ static uint64_t xpf_find_IOSurface_ranges(void)
 
 	__block uint64_t stringAddr = 0;
 	PFStringMetric *stringMetric = pfmetric_string_init("IOSurface: Address ranges do not cover requested allocation size\n");
-	pfmetric_run(stringSec, stringMetric, ^(uint64_t vmaddr, bool *stop){
-		stringAddr = vmaddr;
-		*stop = true;
-	});
+	if (gXPF.kernelIOSurfaceOsLogSection) {
+		pfmetric_run(gXPF.kernelIOSurfaceOsLogSection, stringMetric, ^(uint64_t vmaddr, bool *stop){
+			stringAddr = vmaddr;
+			*stop = true;
+		});
+	}
+	if (!stringAddr) {
+		pfmetric_run(stringSec, stringMetric, ^(uint64_t vmaddr, bool *stop){
+			stringAddr = vmaddr;
+			*stop = true;
+		});
+	}
 	pfmetric_free(stringMetric);
 	XPF_ASSERT(stringAddr);
 
