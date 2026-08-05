@@ -1507,6 +1507,7 @@ static uint64_t xpf_find_task_security_config(void)
 		*stop = true;
 	});
 	pfmetric_free(stringMetric);
+	XPF_ASSERT(stringAddr);
 
 	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
 	__block uint64_t xrefAddr = 0;
@@ -1515,6 +1516,7 @@ static uint64_t xpf_find_task_security_config(void)
 		*stop = true;
 	});
 	pfmetric_free(xrefMetric);
+	XPF_ASSERT(xrefAddr);
 
 	uint32_t addInst = 0x121a7000, addMask = 0xfffffc00; // add ?, ?, 0xffffffc7
 	uint64_t addAddr = pfsec_find_next_inst(gXPF.kernelTextSection, xrefAddr, 50, addInst, addMask);

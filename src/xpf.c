@@ -35,13 +35,19 @@ bool xpf_supported_sptm_18_4_to_26_x(void)
 	return (bool)gXPF.sptm && strcmp(gXPF.darwinVersion, "24.4.0") >= 0 && strcmp(gXPF.darwinVersion, "27.0.0") < 0;
 }
 
-bool xpf_supported_18_down(void)
+bool xpf_supported_18_down_incl_26b1(void)
 {
+	if (!strcmp(gXPF.xnuBuild, "12377.0.81.0.3~311")) {
+		return true;
+	}
 	return strcmp(gXPF.darwinVersion, "25.0.0") < 0;
 }
 
-bool xpf_supported_26_up(void)
+bool xpf_supported_26_up_excl_26b1(void)
 {
+	if (!strcmp(gXPF.xnuBuild, "12377.0.81.0.3~311")) {
+		return false;
+	}
 	return strcmp(gXPF.darwinVersion, "25.0.0") >= 0;
 }
 
@@ -239,7 +245,7 @@ XPFSet gPhysmapSPTMSet_27_0_Up = {
 
 XPFSet gStructSet_18Down = {
 	.name="struct",
-	.supported=xpf_supported_18_down,
+	.supported=xpf_supported_18_down_incl_26b1,
 	.metrics={
 		"kernelStruct.proc.struct_size",
 		"kernelStruct.task.itk_space",
@@ -250,11 +256,11 @@ XPFSet gStructSet_18Down = {
 
 XPFSet gStructSet_26Up = {
 	.name="struct",
-	.supported=xpf_supported_26_up,
+	.supported=xpf_supported_26_up_excl_26b1,
 	.metrics={
 		"kernelStruct.proc.struct_size",
 		"kernelStruct.task.itk_space",
-		"kernelStruct.task.security_config",
+		"kernelStruct.task.security_config", // The field in this that Dopamine needs was only introduced in 26.0b2
 		"kernelStruct.vm_map.pmap",
 		NULL
 	}
