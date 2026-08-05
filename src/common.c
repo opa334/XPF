@@ -1395,8 +1395,7 @@ static uint64_t xpf_find_iorvbar(void)
 	});
 	return iorvbar;
 }
-
-static uint64_t xpf_find_IOSurface_ranges(void)
+static uint64_t xpf_find_IOMemoryDescriptor_withAddressRanges_ref(void)
 {
 	PFSection *textSec = (gXPF.kernelIOSurfaceTextSection ?: gXPF.kernelTextSection);
 	PFSection *stringSec = (gXPF.kernelIOSurfaceStringSection ?: gXPF.kernelStringSection);
@@ -1436,9 +1435,22 @@ static uint64_t xpf_find_IOSurface_ranges(void)
 	uint64_t blAddr = pfsec_find_prev_inst(textSec, belowRefAddr, 50, blAnyInst, blAnyMask);
 	XPF_ASSERT(blAddr);
 
+	return blAddr;
+}
+
+static uint64_t xpf_find_IOSurface_ranges(void)
+{
+	PFSection *textSec = (gXPF.kernelIOSurfaceTextSection ?: gXPF.kernelTextSection);
+	if (!gXPF.kernelIsArm64e && !gXPF.kernelIsFileset) {
+		textSec = gXPF.kernelPLKTextSection;
+	}
+
+	uint64_t IOMemoryDescriptor_withAddressRanges_ref = xpf_item_resolve("kernelStruct.IOSurface.IOMemoryDescriptor_withAddressRanges_ref");
+	XPF_ASSERT(IOMemoryDescriptor_withAddressRanges_ref);
+
 	uint32_t ldrX0AnyInst = 0, ldrX0AnyMask = 0;
 	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_X(0), ARM64_REG_ANY, OPT_UINT64_NONE, &ldrX0AnyInst, &ldrX0AnyMask);
-	uint64_t ldrAddr = pfsec_find_prev_inst(textSec, blAddr, 20, ldrX0AnyInst, ldrX0AnyMask);
+	uint64_t ldrAddr = pfsec_find_prev_inst(textSec, IOMemoryDescriptor_withAddressRanges_ref, 20, ldrX0AnyInst, ldrX0AnyMask);
 	XPF_ASSERT(ldrAddr);
 
 	uint64_t ldrImm = 0;
@@ -1448,7 +1460,42 @@ static uint64_t xpf_find_IOSurface_ranges(void)
 
 static uint64_t xpf_find_IOSurface_rangeCount(void)
 {
-	return xpf_item_resolve("kernelStruct.IOSurface.ranges") + 8;
+	PFSection *textSec = (gXPF.kernelIOSurfaceTextSection ?: gXPF.kernelTextSection);
+	if (!gXPF.kernelIsArm64e && !gXPF.kernelIsFileset) {
+		textSec = gXPF.kernelPLKTextSection;
+	}
+
+	uint64_t IOMemoryDescriptor_withAddressRanges_ref = xpf_item_resolve("kernelStruct.IOSurface.IOMemoryDescriptor_withAddressRanges_ref");
+	XPF_ASSERT(IOMemoryDescriptor_withAddressRanges_ref);
+
+	uint32_t movW1_0x0_Inst = 0, movW1_0x0_Mask = 0;
+	arm64_gen_mov_imm('z', ARM64_REG_W(1), OPT_UINT64(0), OPT_UINT64(0), &movW1_0x0_Inst, &movW1_0x0_Mask);
+
+	uint32_t ldrW1Inst = 0, ldrW1Mask = 0;
+	arm64_gen_ldr_imm(0, LDR_STR_TYPE_UNSIGNED, ARM64_REG_W(1), ARM64_REG_ANY, OPT_UINT64_NONE, &ldrW1Inst, &ldrW1Mask);
+
+	for (int i = 0; i < 50; i++) {
+		uint64_t curAddr = IOMemoryDescriptor_withAddressRanges_ref - (i*sizeof(uint32_t));
+		uint32_t inst = pfsec_read32(textSec, curAddr);
+
+		if ((inst & ldrW1Mask) == ldrW1Inst) {
+			uint64_t imm;
+			arm64_dec_ldr_imm(pfsec_read32(textSec, curAddr), NULL, NULL, &imm, NULL, NULL);
+			return imm;
+		}
+		else if ((inst & movW1_0x0_Mask) == movW1_0x0_Inst) {
+			__block uint64_t imm = 0;
+			PFXrefMetric *xrefMetric = pfmetric_xref_init(curAddr, XREF_TYPE_MASK_JUMP);
+			pfmetric_run(textSec, xrefMetric, ^(uint64_t vmaddr, bool *stop){
+				arm64_dec_ldr_imm(pfsec_read32(textSec, vmaddr-4), NULL, NULL, &imm, NULL, NULL);
+				*stop = true;
+			});
+			pfmetric_free(xrefMetric);
+			return imm;
+		}
+	}
+
+	return 0;
 }
 
 void xpf_common_init(void)
@@ -1513,6 +1560,7 @@ void xpf_common_init(void)
 	xpf_item_register("kernelStruct.thread.machine_kstackptr", xpf_find_thread_machine_kstackptr, NULL);
 	xpf_item_register("kernelStruct.thread.machine_contextData", xpf_find_thread_machine_contextData, NULL);
 
+	xpf_item_register("kernelStruct.IOSurface.IOMemoryDescriptor_withAddressRanges_ref", xpf_find_IOMemoryDescriptor_withAddressRanges_ref, NULL);
 	xpf_item_register("kernelStruct.IOSurface.ranges", xpf_find_IOSurface_ranges, NULL);
 	xpf_item_register("kernelStruct.IOSurface.rangeCount", xpf_find_IOSurface_rangeCount, NULL);
 
