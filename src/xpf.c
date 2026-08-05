@@ -35,6 +35,16 @@ bool xpf_supported_sptm_18_4_to_26_x(void)
 	return (bool)gXPF.sptm && strcmp(gXPF.darwinVersion, "24.4.0") >= 0 && strcmp(gXPF.darwinVersion, "27.0.0") < 0;
 }
 
+bool xpf_supported_18_down(void)
+{
+	return strcmp(gXPF.darwinVersion, "25.0.0") < 0;
+}
+
+bool xpf_supported_26_up(void)
+{
+	return strcmp(gXPF.darwinVersion, "25.0.0") >= 0;
+}
+
 bool xpf_supported_sptm_27_0_up(void)
 {
 	return (bool)gXPF.sptm && strcmp(gXPF.darwinVersion, "27.0.0") >= 0;
@@ -227,12 +237,24 @@ XPFSet gPhysmapSPTMSet_27_0_Up = {
 	}
 };
 
-XPFSet gStructSet = {
+XPFSet gStructSet_18Down = {
 	.name="struct",
-	.supported=xpf_supported_always,
+	.supported=xpf_supported_18_down,
 	.metrics={
 		"kernelStruct.proc.struct_size",
 		"kernelStruct.task.itk_space",
+		"kernelStruct.vm_map.pmap",
+		NULL
+	}
+};
+
+XPFSet gStructSet_26Up = {
+	.name="struct",
+	.supported=xpf_supported_26_up,
+	.metrics={
+		"kernelStruct.proc.struct_size",
+		"kernelStruct.task.itk_space",
+		"kernelStruct.task.security_config",
 		"kernelStruct.vm_map.pmap",
 		NULL
 	}
@@ -380,7 +402,8 @@ XPFSet *gSets[] = {
 	&gPhysmapSPTMSet_18_3_Down,
 	&gPhysmapSPTMSet_18_4_Up,
 	&gPhysmapSPTMSet_27_0_Up,
-	&gStructSet,
+	&gStructSet_18Down,
+	&gStructSet_26Up,
 	&gTrustcache15Set,
 	&gTrustcache16Set,
 	&gTrustcacheSPTMSet,

@@ -1498,6 +1498,39 @@ static uint64_t xpf_find_IOSurface_rangeCount(void)
 	return 0;
 }
 
+static uint64_t xpf_find_task_security_config(void)
+{
+	PFStringMetric *stringMetric = pfmetric_string_init("com.apple.security.hardened-process.platform-restrictions");
+	__block uint64_t stringAddr = 0;
+	pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop){
+		stringAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(stringMetric);
+
+	PFXrefMetric *xrefMetric = pfmetric_xref_init(stringAddr, XREF_TYPE_MASK_REFERENCE);
+	__block uint64_t xrefAddr = 0;
+	pfmetric_run(gXPF.kernelTextSection, xrefMetric, ^(uint64_t vmaddr, bool *stop){
+		xrefAddr = vmaddr;
+		*stop = true;
+	});
+	pfmetric_free(xrefMetric);
+
+	uint32_t addInst = 0x121a7000, addMask = 0xfffffc00; // add ?, ?, 0xffffffc7
+	uint64_t addAddr = pfsec_find_next_inst(gXPF.kernelTextSection, xrefAddr, 50, addInst, addMask);
+	XPF_ASSERT(addAddr);
+
+	arm64_register sourceReg = ARM64_REG_W((pfsec_read32(gXPF.kernelTextSection, addAddr) >> 5) & 0x1f);
+	uint32_t ldrbInst = 0, ldrbMask = 0;
+	arm64_gen_ldr_imm('b', LDR_STR_TYPE_UNSIGNED, sourceReg, ARM64_REG_ANY, OPT_UINT64_NONE, &ldrbInst, &ldrbMask);
+	uint64_t ldrAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, addAddr, 5, ldrbInst, ldrbMask);
+	XPF_ASSERT(ldrAddr);
+
+	uint64_t imm = 0;
+	arm64_dec_ldr_imm(pfsec_read32(gXPF.kernelTextSection, ldrAddr), NULL, NULL, &imm, NULL, NULL);
+	return imm;
+}
+
 void xpf_common_init(void)
 {
 	xpf_item_register("kernelSymbol.start_first_cpu", xpf_find_start_first_cpu, NULL);
@@ -1533,6 +1566,7 @@ void xpf_common_init(void)
 	xpf_item_register("kernelSymbol.task_crashinfo_release_ref", xpf_find_task_crashinfo_release_ref, NULL);
 	xpf_item_register("kernelSymbol.task_collect_crash_info", xpf_find_task_collect_crash_info, NULL);
 	xpf_item_register("kernelStruct.task.itk_space", xpf_find_task_itk_space, NULL);
+	xpf_item_register("kernelStruct.task.security_config", xpf_find_task_security_config, NULL);
 
 	xpf_item_register("kernelStruct.vm_map.pmap", xpf_find_vm_map_pmap, NULL);
 	xpf_item_register("kernelStruct.proc.struct_size", xpf_find_proc_struct_size, NULL);
