@@ -1411,6 +1411,12 @@ static uint64_t xpf_find_IOMemoryDescriptor_withAddressRanges_ref(void)
 			*stop = true;
 		});
 	}
+	if (!stringAddr && gXPF.kernelPrelinkTextSection) {
+		pfmetric_run(gXPF.kernelPrelinkTextSection, stringMetric, ^(uint64_t vmaddr, bool *stop){
+			stringAddr = vmaddr;
+			*stop = true;
+		});
+	}
 	if (!stringAddr) {
 		pfmetric_run(gXPF.kernelStringSection, stringMetric, ^(uint64_t vmaddr, bool *stop){
 			stringAddr = vmaddr;
