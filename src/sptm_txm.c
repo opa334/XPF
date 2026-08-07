@@ -456,7 +456,7 @@ static uint64_t xpf_find_libsptm_init(void)
 
 		uint32_t blAnyInst = 0, blAnyMask = 0;
 		arm64_gen_b_l(OPT_BOOL_NONE, OPT_UINT64_NONE, OPT_UINT64_NONE, &blAnyInst, &blAnyMask);
-		uint64_t blAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, wfe_timeout_configureXrefAddr - 4, 20, blAnyInst, blAnyMask);
+		uint64_t blAddr = pfsec_find_prev_inst(gXPF.kernelTextSection, wfe_timeout_configureXrefAddr, 20, blAnyInst, blAnyMask);
 		XPF_ASSERT(blAddr);
 
 		uint64_t libsptm_init = 0;
